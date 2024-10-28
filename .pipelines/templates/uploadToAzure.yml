@@ -234,6 +234,14 @@ jobs:
     displayName: 'Capture downloads'
 
   - pwsh: |
+      Write-Verbose -Verbose "Copying Github Release files in $(Build.ArtifactStagingDirectory)/downloads to use in Release Pipeline"
+      Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)/downloads/*" -Recurse | 
+        Where-Object { $_.Extension -notin '.msix', '.nupkg' } | 
+        ForEach-Object { Write-Verbose -Verbose $_.FullName ; $_  } |
+        Copy-Item -Destination $(ob_outputDirectory) -Recurse
+    displayName: Copy downloads to Artifacts
+
+  - pwsh: |
       # Create output directory for packages which have been uploaded to blob storage
       New-Item -Path $(Build.ArtifactStagingDirectory)/uploaded -ItemType Directory -Force
     displayName: Create output directory for packages
