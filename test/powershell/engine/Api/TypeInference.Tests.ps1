@@ -650,8 +650,10 @@ Describe "Type inference Tests" -tags "CI" {
     }
 
     It "Infers type from variable with AllowSafeEval" {
-        function Hide-GetProcess { Get-Process }
-        $p = Hide-GetProcess
+        # Invoke-Expression is used to "hide" Get-Process from the type inference.
+        # If the typeinference code is updated to handle Invoke-Expression, this test will need to find some other way to set $p
+        # so that the type inference can't figure it out without evaluating the variable value
+        $p = Invoke-Expression -Command 'Get-Process'
         $res = [AstTypeInference]::InferTypeOf( { $p }.Ast, [TypeInferenceRuntimePermissions]::AllowSafeEval)
         $res.Name | Should -Be 'System.Diagnostics.Process'
     }
@@ -1490,6 +1492,58 @@ Describe "Type inference Tests" -tags "CI" {
             $true
         )
         $null = [AstTypeInference]::InferTypeOf($FoundAst)
+    }
+
+    It 'Should infer output from anonymous function' {
+        $res = [AstTypeInference]::InferTypeOf( { & {"Hello"} }.Ast)
+        $res.Name | Should -Be 'System.String'
+    }
+
+    It 'Should infer output from function without OutputType attribute' {
+        function MyHello{"Hello"}
+        $res = [AstTypeInference]::InferTypeOf( { MyHello }.Ast)
+        $res.Name | Should -Be 'System.String'
+    }
+
+    It 'Infers type of command with all streams redirected to Success stream' {
+        $res = [AstTypeInference]::InferTypeOf( { Get-PSDrive *>&1 }.Ast)
+        $ExpectedTypeNames = @(
+            [ErrorRecord].FullName
+            [WarningRecord].FullName
+            [VerboseRecord].FullName
+            [DebugRecord].FullName
+            [InformationRecord].FullName
+            [PSDriveInfo].FullName
+        ) -join ';'
+        $res.Name -join ';' | Should -Be $ExpectedTypeNames
+    }
+
+    It 'Infers type of command with success stream redirected' {
+        $res = [AstTypeInference]::InferTypeOf( { Get-PSDrive *>&1 1>$null }.Ast)
+        $res.Count | Should -Be 0
+    }
+
+    It 'Infers type of command with some streams redirected to success' {
+        $res = [AstTypeInference]::InferTypeOf( { Get-PSDrive 3>&1 4>&1 }.Ast)
+        $res.Count | Should -Be 3
+        $ExpectedTypeNames = @(
+            [PSDriveInfo].FullName
+            [VerboseRecord].FullName
+            [WarningRecord].FullName
+        ) -join ';'
+        ($res.Name | Sort-Object) -join ';' | Should -Be $ExpectedTypeNames
+    }
+
+    It 'Infers type of command with other streams redirected to success' {
+        $res = [AstTypeInference]::InferTypeOf( { Get-PSDrive 2>&1 5>&1 6>&1 }.Ast)
+        $res.Count | Should -Be 4
+        $ExpectedTypeNames = @(
+            [DebugRecord].FullName
+            [ErrorRecord].FullName
+            [InformationRecord].FullName
+            [PSDriveInfo].FullName
+        ) -join ';'
+        ($res.Name | Sort-Object) -join ';' | Should -Be $ExpectedTypeNames
     }
 
     It 'Should only consider assignments wrapped in parentheses to be a part of the output in a Named block' {
