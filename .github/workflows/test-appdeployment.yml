@@ -141,20 +141,20 @@ jobs:
         
         # Create a test project to verify the AppHostDotNetSearch property gets set correctly
         $testProj = @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="PowerShell.Common.props" />
-  
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <AppDeployment>${{ matrix.runtime == 'fxdependent' && 'GlobalTool' || matrix.runtime.StartsWith('fxdependent-') && 'FxDependent' || 'SelfContained' }}</AppDeployment>
-  </PropertyGroup>
-  
-  <Target Name="ShowProperties">
-    <Message Text="AppDeployment: `$(AppDeployment)" Importance="high" />
-    <Message Text="AppHostDotNetSearch: `$(AppHostDotNetSearch)" Importance="high" />
-  </Target>
-</Project>
-"@
+        <Project Sdk="Microsoft.NET.Sdk">
+          <Import Project="PowerShell.Common.props" />
+          
+          <PropertyGroup>
+            <TargetFramework>net9.0</TargetFramework>
+            <AppDeployment>${{ matrix.runtime == 'fxdependent' && 'GlobalTool' || matrix.runtime.StartsWith('fxdependent-') && 'FxDependent' || 'SelfContained' }}</AppDeployment>
+          </PropertyGroup>
+          
+          <Target Name="ShowProperties">
+            <Message Text="AppDeployment: `$(AppDeployment)" Importance="high" />
+            <Message Text="AppHostDotNetSearch: `$(AppHostDotNetSearch)" Importance="high" />
+          </Target>
+        </Project>
+        "@
         
         $testProj | Out-File -FilePath "test-appdeployment.csproj" -Encoding UTF8
         
