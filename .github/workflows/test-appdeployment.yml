@@ -139,17 +139,30 @@ jobs:
       run: |
         Write-Host "=== Testing MSBuild Property Resolution ===" -ForegroundColor Green
         
+        # Determine AppDeployment value based on runtime
+        $runtime = "${{ matrix.runtime }}"
+        $appDeployment = if ($runtime -eq 'fxdependent') {
+            'GlobalTool'
+        } elseif ($runtime.StartsWith('fxdependent-')) {
+            'FxDependent'
+        } else {
+            'SelfContained'
+        }
+        
+        Write-Host "Setting AppDeployment to: $appDeployment for runtime: $runtime" -ForegroundColor Yellow
+        
         # Create a test project to verify the AppHostDotNetSearch property gets set correctly
         $testProj = @"
         <Project Sdk="Microsoft.NET.Sdk">
           <Import Project="PowerShell.Common.props" />
           
           <PropertyGroup>
-            <TargetFramework>net9.0</TargetFramework>
-            <AppDeployment>${{ matrix.runtime == 'fxdependent' && 'GlobalTool' || matrix.runtime.StartsWith('fxdependent-') && 'FxDependent' || 'SelfContained' }}</AppDeployment>
+            <TargetFramework>net10.0</TargetFramework>
+            <AppDeployment>$appDeployment</AppDeployment>
           </PropertyGroup>
           
           <Target Name="ShowProperties">
+            <Message Text="Runtime: $runtime" Importance="high" />
             <Message Text="AppDeployment: `$(AppDeployment)" Importance="high" />
             <Message Text="AppHostDotNetSearch: `$(AppHostDotNetSearch)" Importance="high" />
           </Target>
@@ -160,6 +173,15 @@ jobs:
         
         Write-Host "Testing MSBuild property resolution..." -ForegroundColor Yellow
         dotnet msbuild test-appdeployment.csproj -t:ShowProperties -v:minimal
+        
+        # Verify the property was set correctly
+        $expectedAppHostDotNetSearch = switch ($appDeployment) {
+            "GlobalTool" { "Global" }
+            "FxDependent" { "EnvironmentVariable;Global" }
+            "SelfContained" { "AppLocal" }
+        }
+        
+        Write-Host "Expected AppHostDotNetSearch for $appDeployment : $expectedAppHostDotNetSearch" -ForegroundColor Green
         
         # Clean up
         Remove-Item "test-appdeployment.csproj" -ErrorAction SilentlyContinue
