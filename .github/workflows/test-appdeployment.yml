@@ -46,8 +46,52 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: |
+          8.0.x
+          9.0.x
         include-prerelease: true
+    
+    - name: Handle SDK Version Compatibility
+      shell: pwsh
+      run: |
+        Write-Host "=== Handling SDK Version Compatibility ===" -ForegroundColor Green
+        
+        # Check current global.json
+        $globalJsonPath = "global.json"
+        if (Test-Path $globalJsonPath) {
+            $globalJson = Get-Content $globalJsonPath | ConvertFrom-Json
+            Write-Host "Original required SDK: $($globalJson.sdk.version)" -ForegroundColor Gray
+            
+            # Check available SDKs
+            $availableSDKs = dotnet --list-sdks
+            Write-Host "Available SDKs:" -ForegroundColor Gray
+            $availableSDKs | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+            
+            # Find a compatible SDK (prefer 8.x if available, otherwise use latest)
+            $compatibleSDK = $null
+            $sdk8x = $availableSDKs | Where-Object { $_ -match '^8\.' } | Sort-Object { [Version]($_ -split ' ')[0] } -Descending | Select-Object -First 1
+            $sdk9x = $availableSDKs | Where-Object { $_ -match '^9\.' } | Sort-Object { [Version]($_ -split ' ')[0] } -Descending | Select-Object -First 1
+            
+            if ($sdk8x) {
+                $compatibleSDK = ($sdk8x -split ' ')[0]
+                Write-Host "Using .NET 8.x SDK: $compatibleSDK" -ForegroundColor Green
+            } elseif ($sdk9x) {
+                $compatibleSDK = ($sdk9x -split ' ')[0]
+                Write-Host "Using .NET 9.x SDK: $compatibleSDK" -ForegroundColor Yellow
+            }
+            
+            if ($compatibleSDK -and $compatibleSDK -ne $globalJson.sdk.version) {
+                Write-Host "Temporarily updating global.json for CI testing..." -ForegroundColor Yellow
+                Write-Host "  From: $($globalJson.sdk.version)" -ForegroundColor Red
+                Write-Host "  To: $compatibleSDK" -ForegroundColor Green
+                
+                # Update global.json
+                $globalJson.sdk.version = $compatibleSDK
+                $globalJson | ConvertTo-Json -Depth 10 | Set-Content $globalJsonPath
+                
+                Write-Host "✅ global.json updated for CI compatibility" -ForegroundColor Green
+            }
+        }
     
     - name: Setup PowerShell on Linux/macOS
       if: runner.os != 'Windows'
