@@ -2,7 +2,7 @@ name: Test AppHostDotNetSearch Configuration
 
 on:
   push:
-    branches: [ specifyDotnetSearch, main ]
+    branches: [ release/v7.4 ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allows manual triggering
@@ -155,12 +155,12 @@ jobs:
         $testProj = @"
         <Project Sdk="Microsoft.NET.Sdk">
           <Import Project="PowerShell.Common.props" />
-          
+
           <PropertyGroup>
             <TargetFramework>net10.0</TargetFramework>
             <AppDeployment>$appDeployment</AppDeployment>
           </PropertyGroup>
-          
+
           <Target Name="ShowProperties">
             <Message Text="Runtime: $runtime" Importance="high" />
             <Message Text="AppDeployment: `$(AppDeployment)" Importance="high" />
