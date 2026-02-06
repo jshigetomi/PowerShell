@@ -16,10 +16,8 @@ The `PSContentPath` feature introduces a configurable user content path system f
 - **`Get-PSContentPath`** - Retrieves the current PowerShell content path
   - `-Size` parameter to see the size of content at the path
 - **`Set-PSContentPath`** - Sets a custom content path location
-  - Limited to OneDrive or LocalAppData destinations for startup reliability
-- **`Move-PSContent`** - Migrates content between locations
-  - `-Copy` option to copy instead of move
-  - `-Force` option for overwriting existing content
+  - `-Path` parameter to set a custom path
+  - `-Reset` parameter to reset to platform default
 
 #### Path Defaults
 - **Windows**: Changed from `Documents\PowerShell` to `LocalAppData\PowerShell`
@@ -27,7 +25,8 @@ The `PSContentPath` feature introduces a configurable user content path system f
 
 #### Architecture
 - New internal variables: `DefaultPSContentDirectory`, `LocalAppDataPSContentDirectory`
-- Environment variable: `PSUserContentPathEnvVar` for configuration
+- Readonly PowerShell variable: `$PSUserContentPath` exposes the current content path
+- Configuration key: `PSUserContentPathConfigKey` for persisting custom path in powershell.config.json
 - Centralized API: `Utils.GetPSContentPath()` for all content path references
 - Lazy migration from old config directory to new default location
 
@@ -87,9 +86,10 @@ The `PSContentPath` feature introduces a configurable user content path system f
 When working with PSContentPath-related code:
 
 1. **Understand the path resolution order**:
-   - Check `PSUserContentPathEnvVar` environment variable first
+   - Check `PSContentPathConfigKey` in powershell.config.json first
    - Fall back to LocalAppData, then OneDrive on Windows
    - Use platform-specific defaults on Unix
+   - The readonly `$PSUserContentPath` variable exposes the resolved path
 
 2. **Use centralized API**:
    - Always use `Utils.GetPSContentPath()` for content path resolution
