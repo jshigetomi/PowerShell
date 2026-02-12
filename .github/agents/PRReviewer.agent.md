@@ -1,6 +1,6 @@
 ---
 description: 'Reviews Pull Requests in the PowerShell/PowerShell repository and provides actionable feedback.'
-tools: ['github_repo', 'fetch_webpage', 'read_file', 'semantic_search', 'grep_search']
+tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'microsoft-docs/*', 'agent', 'todo']
 ---
 
 # PR Reviewer Agent
