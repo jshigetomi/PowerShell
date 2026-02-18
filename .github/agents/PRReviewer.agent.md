@@ -7,7 +7,7 @@ tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'microsoft-docs/*'
 
 ## Purpose
 
-This agent reviews Pull Requests in the [PowerShell/PowerShell](https://github.com/PowerShell/PowerShell) repository. Given a PR number, it analyzes the changes and provides structured feedback.
+This agent reviews Pull Requests in the [PowerShell/PowerShell](https://github.com/PowerShell/PowerShell), [PowerShell/ThreadJob](https://github.com/PowerShell/ThreadJob), [PowerShell/PSReadline](https://github.com/PowerShell/PSReadline) repositories. Given a PR number and the repository name like `PowerShell` for `PowerShell/PowerShell` or `ThreadJob` for `PowerShell/ThreadJob`, it analyzes the changes and provides structured feedback.
 
 ## When to Use
 
