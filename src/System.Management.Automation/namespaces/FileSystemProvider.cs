@@ -1324,6 +1324,7 @@ namespace Microsoft.PowerShell.Commands
             if (ShouldProcess(resource, action))
             {
                 var invokeProcess = new System.Diagnostics.Process();
+                // codeql[cs/microsoft/command-line-injection-shell-execution] - This is expected Poweshell behavior where user inputted paths are supported for the context of this method. The user assumes trust for the file path they are specifying. If there is concern for remoting, restricted remoting guidelines should be used.
                 invokeProcess.StartInfo.FileName = path;
 #if UNIX
                 bool useShellExecute = false;
@@ -1902,15 +1903,16 @@ namespace Microsoft.PowerShell.Commands
                     }
                 }
 
-                bool isDirectory = fileAttributes.HasFlag(FileAttributes.Directory);
-                ReadOnlySpan<char> mode = stackalloc char[]
-                {
-                    isLink ? 'l' : isDirectory ? 'd' : '-',
+                ReadOnlySpan<char> mode =
+                [
+                    isLink ?
+                        'l' :
+                        fileAttributes.HasFlag(FileAttributes.Directory) ? 'd' : '-',
                     fileAttributes.HasFlag(FileAttributes.Archive) ? 'a' : '-',
                     fileAttributes.HasFlag(FileAttributes.ReadOnly) ? 'r' : '-',
                     fileAttributes.HasFlag(FileAttributes.Hidden) ? 'h' : '-',
                     fileAttributes.HasFlag(FileAttributes.System) ? 's' : '-',
-                };
+                ];
                 return new string(mode);
             }
 
@@ -2271,8 +2273,7 @@ namespace Microsoft.PowerShell.Commands
                             // for hardlinks we resolve the target to an absolute path
                             if (!IsAbsolutePath(strTargetPath))
                             {
-                                // there is already a check before here so that strTargetPath should only resolve to 1 path
-                                strTargetPath = SessionState.Path.GetResolvedPSPathFromPSPath(strTargetPath).FirstOrDefault()?.Path;
+                                strTargetPath = SessionState.Path.GetUnresolvedProviderPathFromPSPath(strTargetPath);
                             }
 
                             exists = GetFileSystemInfo(strTargetPath, out isDirectory) != null;
@@ -2666,12 +2667,6 @@ namespace Microsoft.PowerShell.Commands
                 !string.IsNullOrEmpty(path),
                 "The caller should verify path");
 
-            // Get the parent path
-            string parentPath = GetParentPath(path, null);
-
-            // The directory name
-            string childName = GetChildName(path);
-
             ErrorRecord error = null;
             if (!Force && ItemExists(path, out error))
             {
@@ -2701,7 +2696,7 @@ namespace Microsoft.PowerShell.Commands
 
                 if (ShouldProcess(resource, action))
                 {
-                    var result = Directory.CreateDirectory(Path.Combine(parentPath, childName));
+                    var result = Directory.CreateDirectory(path);
 
                     if (streamOutput)
                     {
@@ -8292,7 +8287,7 @@ namespace System.Management.Automation.Internal
             ArgumentNullException.ThrowIfNull(streamName);
 
             string adjustedStreamName = streamName.Trim();
-            if (adjustedStreamName.IndexOf(':') != 0)
+            if (!adjustedStreamName.StartsWith(':'))
             {
                 adjustedStreamName = ":" + adjustedStreamName;
             }

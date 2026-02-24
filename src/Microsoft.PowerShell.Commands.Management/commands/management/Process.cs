@@ -16,7 +16,6 @@ using System.Management.Automation.Language;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
-using System.Security;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
@@ -1677,7 +1676,7 @@ namespace Microsoft.PowerShell.Commands
         private SwitchParameter _loaduserprofile = SwitchParameter.Present;
 
         /// <summary>
-        /// Starts process in a new window.
+        /// Starts process in the current console window.
         /// </summary>
         [Parameter(ParameterSetName = "Default")]
         [Alias("nnw")]
@@ -1904,6 +1903,7 @@ namespace Microsoft.PowerShell.Commands
             }
             catch (CommandNotFoundException)
             {
+                // codeql[cs/microsoft/command-line-injection-shell-execution] - This is expected Poweshell behavior where user inputted paths are supported for the context of this method. The user assumes trust for the file path they are specifying and the process is on the user's system except for remoting in which case restricted remoting security guidelines should be used.
                 startInfo.FileName = FilePath;
 #if UNIX
                 // Arguments are passed incorrectly to the executable used for ShellExecute and not to filename https://github.com/dotnet/corefx/issues/30718
@@ -1965,7 +1965,9 @@ namespace Microsoft.PowerShell.Commands
 
                 startInfo.WindowStyle = _windowstyle;
 
-                if (_nonewwindow)
+                // When starting a process as another user, the 'CreateNoWindow' property value is ignored and a new window is created.
+                // See details at https://learn.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.createnowindow?view=net-9.0#remarks
+                if (_nonewwindow && _credential is null)
                 {
                     startInfo.CreateNoWindow = _nonewwindow;
                 }
@@ -2405,32 +2407,59 @@ namespace Microsoft.PowerShell.Commands
 
         private void SetStartupInfo(ProcessStartInfo startinfo, ref ProcessNativeMethods.STARTUPINFO lpStartupInfo, ref int creationFlags)
         {
-            bool hasRedirection = false;
+            // If we are starting a process using the current console window, we need to set its standard handles
+            // explicitly when they are not redirected because otherwise they won't be set and the new process will
+            // fail with the "invalid handle" error.
+            //
+            // However, if we are starting a process with a new console window, we should not explicitly set those
+            // standard handles when they are not redirected, but instead let Windows figure out the default to use
+            // when creating the process. Otherwise, the standard input handles of the current window and the new
+            // window will get weirdly tied together and cause problems.
+            bool hasRedirection = startinfo.CreateNoWindow
+                || _redirectstandardinput is not null
+                || _redirectstandardoutput is not null
+                || _redirectstandarderror is not null;
+
             // RedirectionStandardInput
             if (_redirectstandardinput != null)
             {
-                hasRedirection = true;
                 startinfo.RedirectStandardInput = true;
                 _redirectstandardinput = ResolveFilePath(_redirectstandardinput);
                 lpStartupInfo.hStdInput = GetSafeFileHandleForRedirection(_redirectstandardinput, FileMode.Open);
+            }
+            else if (startinfo.CreateNoWindow)
+            {
+                lpStartupInfo.hStdInput = new SafeFileHandle(
+                    ProcessNativeMethods.GetStdHandle(-10),
+                    ownsHandle: false);
             }
 
             // RedirectionStandardOutput
             if (_redirectstandardoutput != null)
             {
-                hasRedirection = true;
                 startinfo.RedirectStandardOutput = true;
                 _redirectstandardoutput = ResolveFilePath(_redirectstandardoutput);
                 lpStartupInfo.hStdOutput = GetSafeFileHandleForRedirection(_redirectstandardoutput, FileMode.Create);
+            }
+            else if (startinfo.CreateNoWindow)
+            {
+                lpStartupInfo.hStdOutput = new SafeFileHandle(
+                    ProcessNativeMethods.GetStdHandle(-11),
+                    ownsHandle: false);
             }
 
             // RedirectionStandardError
             if (_redirectstandarderror != null)
             {
-                hasRedirection = true;
                 startinfo.RedirectStandardError = true;
                 _redirectstandarderror = ResolveFilePath(_redirectstandarderror);
                 lpStartupInfo.hStdError = GetSafeFileHandleForRedirection(_redirectstandarderror, FileMode.Create);
+            }
+            else if (startinfo.CreateNoWindow)
+            {
+                lpStartupInfo.hStdError = new SafeFileHandle(
+                    ProcessNativeMethods.GetStdHandle(-12),
+                    ownsHandle: false);
             }
 
             if (hasRedirection)
@@ -2664,7 +2693,7 @@ namespace Microsoft.PowerShell.Commands
             // -Verb is not supported on non-Windows platforms as well as Windows headless SKUs
             if (!Platform.IsWindowsDesktop)
             {
-                return [];
+                return Array.Empty<CompletionResult>();
             }
 
             // Completion: Start-Process -FilePath <path> -Verb <wordToComplete>
@@ -2698,7 +2727,7 @@ namespace Microsoft.PowerShell.Commands
                 }
             }
 
-            return [];
+            return Array.Empty<CompletionResult>();
         }
 
         /// <summary>
@@ -2708,7 +2737,7 @@ namespace Microsoft.PowerShell.Commands
         /// <param name="filePath">The file path to get verbs.</param>
         /// <returns>List of file verbs to complete.</returns>
         private static IEnumerable<CompletionResult> CompleteFileVerbs(string wordToComplete, string filePath)
-            => CompletionCompleters.GetMatchingResults(
+            => CompletionHelpers.GetMatchingResults(
                 wordToComplete,
                 possibleCompletionValues: new ProcessStartInfo(filePath).Verbs);
     }
@@ -2754,6 +2783,9 @@ namespace Microsoft.PowerShell.Commands
 
     internal static class ProcessNativeMethods
     {
+        [DllImport(PinvokeDllNames.GetStdHandleDllName, SetLastError = true)]
+        public static extern IntPtr GetStdHandle(int whichHandle);
+
         [DllImport(PinvokeDllNames.CreateProcessWithLogonWDllName, CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool CreateProcessWithLogonW(string userName,
@@ -2809,7 +2841,7 @@ namespace Microsoft.PowerShell.Commands
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal class SECURITY_ATTRIBUTES
+        internal sealed class SECURITY_ATTRIBUTES
         {
             public int nLength;
             public SafeLocalMemHandle lpSecurityDescriptor;
@@ -2847,7 +2879,7 @@ namespace Microsoft.PowerShell.Commands
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal class STARTUPINFO
+        internal sealed class STARTUPINFO
         {
             public int cb;
             public IntPtr lpReserved;

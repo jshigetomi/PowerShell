@@ -33,6 +33,67 @@ Describe "TabCompletion" -Tags CI {
         $res.CompletionMatches[0].CompletionText | Should -BeExactly 'notepad.exe'
     }
 
+    It 'Should not include duplicate command results' {
+        $OldModulePath = $env:PSModulePath
+        $tempDir = Join-Path -Path $TestDrive -ChildPath "TempPsModuleDir"
+        $ModuleDirs = @(
+            Join-Path $tempDir "TestModule1\1.0"
+            Join-Path $tempDir "TestModule1\1.1"
+            Join-Path $tempDir "TestModule2\1.0"
+        )
+        try
+        {
+            foreach ($Dir in $ModuleDirs)
+            {
+                $NewDir = New-Item -Path $Dir -ItemType Directory -Force
+                $ModuleName = $NewDir.Parent.Name
+                Set-Content -Value 'MyTestFunction{}' -LiteralPath "$($NewDir.FullName)\$ModuleName.psm1"
+                New-ModuleManifest -Path "$($NewDir.FullName)\$ModuleName.psd1" -RootModule "$ModuleName.psm1" -FunctionsToExport "MyTestFunction" -ModuleVersion $NewDir.Name
+            }
+
+            $env:PSModulePath += [System.IO.Path]::PathSeparator + $tempDir            
+            $Res = TabExpansion2 -inputScript MyTestFunction
+            $Res.CompletionMatches.Count | Should -Be 2
+            $SortedMatches = $Res.CompletionMatches.CompletionText | Sort-Object
+            $SortedMatches[0] | Should -Be "TestModule1\MyTestFunction"
+            $SortedMatches[1] | Should -Be "TestModule2\MyTestFunction"
+        }
+        finally
+        {
+            $env:PSModulePath = $OldModulePath
+            Remove-Item -LiteralPath $ModuleDirs -Recurse -Force
+        }
+    }
+
+    It 'Should not include duplicate module results' {
+        $OldModulePath = $env:PSModulePath
+        $tempDir = Join-Path -Path $TestDrive -ChildPath "TempPsModuleDir"
+        try
+        {
+            $ModuleDirs = @(
+                Join-Path $tempDir "TestModule1\1.0"
+                Join-Path $tempDir "TestModule1\1.1"
+            )
+            foreach ($Dir in $ModuleDirs)
+            {
+                $NewDir = New-Item -Path $Dir -ItemType Directory -Force
+                $ModuleName = $NewDir.Parent.Name
+                Set-Content -Value 'MyTestFunction{}' -LiteralPath "$($NewDir.FullName)\$ModuleName.psm1"
+                New-ModuleManifest -Path "$($NewDir.FullName)\$ModuleName.psd1" -RootModule "$ModuleName.psm1" -FunctionsToExport "MyTestFunction" -ModuleVersion $NewDir.Name
+            }
+
+            $env:PSModulePath += [System.IO.Path]::PathSeparator + $tempDir            
+            $Res = TabExpansion2 -inputScript 'Import-Module -Name TestModule'
+            $Res.CompletionMatches.Count | Should -Be 1
+            $Res.CompletionMatches[0].CompletionText | Should -Be TestModule1
+        }
+        finally
+        {
+            $env:PSModulePath = $OldModulePath
+            Remove-Item -LiteralPath $ModuleDirs -Recurse -Force
+        }
+    }
+
     It 'Should complete dotnet method' {
         $res = TabExpansion2 -inputScript '(1).ToSt' -cursorColumn '(1).ToSt'.Length
         $res.CompletionMatches[0].CompletionText | Should -BeExactly 'ToString('
@@ -119,6 +180,46 @@ Describe "TabCompletion" -Tags CI {
         $res.CompletionMatches[0].ToolTip | Should -BeExactly $Expected
     }
     
+    It 'Should complete environment variable' {
+        try {
+            $env:PWSH_TEST_1 = 'value 1'
+            $env:PWSH_TEST_2 = 'value 2'
+
+            $res = TabExpansion2 -inputScript '$env:PWSH_TEST_'
+            $res.CompletionMatches.Count | Should -Be 2
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly '$env:PWSH_TEST_1'
+            $res.CompletionMatches[0].ListItemText | Should -BeExactly 'PWSH_TEST_1'
+            $res.CompletionMatches[0].ToolTip | Should -BeExactly 'PWSH_TEST_1'
+            $res.CompletionMatches[1].CompletionText | Should -BeExactly '$env:PWSH_TEST_2'
+            $res.CompletionMatches[1].ListItemText | Should -BeExactly 'PWSH_TEST_2'
+            $res.CompletionMatches[1].ToolTip | Should -BeExactly 'PWSH_TEST_2'
+        }
+        finally {
+            $env:PWSH_TEST_1 = $null
+            $env:PWSH_TEST_2 = $null
+        }
+    }
+
+    It 'Should complete function variable' {
+        try {
+            Function Test-PwshTest1 {}
+            Function Test-PwshTest2 {}
+
+            $res = TabExpansion2 -inputScript '${function:Test-PwshTest'
+            $res.CompletionMatches.Count | Should -Be 2
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly '${function:Test-PwshTest1}'
+            $res.CompletionMatches[0].ListItemText | Should -BeExactly 'Test-PwshTest1'
+            $res.CompletionMatches[0].ToolTip | Should -BeExactly 'Test-PwshTest1'
+            $res.CompletionMatches[1].CompletionText | Should -BeExactly '${function:Test-PwshTest2}'
+            $res.CompletionMatches[1].ListItemText | Should -BeExactly 'Test-PwshTest2'
+            $res.CompletionMatches[1].ToolTip | Should -BeExactly 'Test-PwshTest2'
+        }
+        finally {
+            Remove-Item function:Test-PwshTest1 -ErrorAction SilentlyContinue
+            Remove-Item function:Test-PwshTest1 -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'Should complete scoped variable with description and value <Value>' -TestCases @(
         @{ Value = 1; Expected = '[int]$VariableWithDescription - Variable description' }
         @{ Value = 'string'; Expected = '[string]$VariableWithDescription - Variable description' }
@@ -806,6 +907,11 @@ using `
         $res.CompletionMatches.CompletionText | Should -Contain "GetType"
     }
 
+    It 'Should complete variable member inferred from command inside scriptblock' {
+        $res = TabExpansion2 -inputScript '& {(New-Guid).'
+        $res.CompletionMatches.Count | Should -BeGreaterThan 0
+    }
+
     It 'Should not complete void instance members' {
         $res = TabExpansion2 -inputScript '([void]("")).'
         $res.CompletionMatches | Should -BeNullOrEmpty
@@ -863,6 +969,36 @@ ConstructorTestClass(int i, bool b)
 
         $diffs = Compare-Object -ReferenceObject $res.CompletionMatches.CompletionText -DifferenceObject $names
         $diffs | Should -BeNullOrEmpty
+    }
+
+    It 'Should complete attribute argument in incomplete param block' {
+        $res = TabExpansion2 -inputScript 'param([ValidatePattern('
+        $Expected = ([ValidatePattern].GetProperties() | Where-Object {$_.CanWrite}).Name -join ','
+        $res.CompletionMatches.CompletionText -join ',' | Should -BeExactly $Expected
+    }
+
+    It 'Should complete attribute argument in incomplete param block on new line' {
+        $TestString =  @'
+param([ValidatePattern(
+^)])
+'@
+        $CursorIndex = $TestString.IndexOf('^')
+        $res = TabExpansion2 -cursorColumn $CursorIndex -inputScript $TestString.Remove($CursorIndex, 1)
+        $Expected = ([ValidatePattern].GetProperties() | Where-Object {$_.CanWrite}).Name -join ','
+        $res.CompletionMatches.CompletionText -join ',' | Should -BeExactly $Expected
+    }
+
+    It 'Should complete attribute argument with partially written name in incomplete param block' {
+        $TestString =  'param([ValidatePattern(op^)]'
+        $CursorIndex = $TestString.IndexOf('^')
+        $res = TabExpansion2 -cursorColumn $CursorIndex -inputScript $TestString.Remove($CursorIndex, 1)
+        $res.CompletionMatches[0].CompletionText | Should -BeExactly 'Options'
+    }
+
+    It 'Should complete attribute argument for incomplete standalone attribute' {
+        $res = TabExpansion2 -inputScript '[ValidatePattern('
+        $Expected = ([ValidatePattern].GetProperties() | Where-Object {$_.CanWrite}).Name -join ','
+        $res.CompletionMatches.CompletionText -join ',' | Should -BeExactly $Expected
     }
 
     It 'Should complete argument for second parameter' {
@@ -976,6 +1112,174 @@ ConstructorTestClass(int i, bool b)
         $res = TabExpansion2 -cursorColumn $CursorIndex -inputScript $TestString.Remove($CursorIndex, 1)
         $res | Should -HaveCount 1
         $res.CompletionMatches[0].CompletionText | Should -BeExactly '$TestVar1'
+    }
+
+    It 'Should complete variable assigned in ParenExpression' {
+        $res = TabExpansion2 -inputScript '($ParenVar) = 1; $ParenVa'
+        $res.CompletionMatches[0].CompletionText | Should -BeExactly '$ParenVar'
+    }
+
+    It 'Should complete variable assigned in ArrayLiteral' {
+        $res = TabExpansion2 -inputScript '$DemoVar1, $DemoVar2 = 1..10; $DemoVar'
+        $res.CompletionMatches[0].CompletionText | Should -BeExactly '$DemoVar1'
+        $res.CompletionMatches[1].CompletionText | Should -BeExactly '$DemoVar2'
+    }
+
+    It 'Should include parameter help message in tool tip - SingleMatch <SingleMatch>' -TestCases @(
+        @{ SingleMatch = $true }
+        @{ SingleMatch = $false }
+    ) {
+        param ($SingleMatch)
+
+        Function Test-Function {
+            param (
+                [Parameter(HelpMessage = 'Some help message')]
+                $ParamWithHelp,
+
+                $ParamWithoutHelp
+            )
+        }
+
+        $expected = '[Object] ParamWithHelp - Some help message'
+
+        if ($SingleMatch) {
+            $Script = 'Test-Function -ParamWithHelp'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches
+        }
+        else {
+            $Script = 'Test-Function -'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches | Where-Object CompletionText -eq '-ParamWithHelp'
+        }
+
+        $res.Count | Should -Be 1
+        $res.CompletionText | Should -BeExactly '-ParamWithHelp'
+        $res.ToolTip | Should -BeExactly $expected
+    }
+
+    It 'Should include parameter help resource message in tool tip - SingleMatch <SingleMatch>' -TestCases @(
+        @{ SingleMatch = $true }
+        @{ SingleMatch = $false }
+    ) {
+        param ($SingleMatch)
+
+        $expected = '`[string`] Activity - *'
+
+        if ($SingleMatch) {
+            $Script = 'Write-Progress -Activity'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches
+        }
+        else {
+            $Script = 'Write-Progress -'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches | Where-Object CompletionText -eq '-Activity'
+        }
+
+        $res.Count | Should -Be 1
+        $res.CompletionText | Should -BeExactly '-Activity'
+        $res.ToolTip | Should -BeLikeExactly $expected
+    }
+
+    It 'Should skip empty parameter HelpMessage with multiple parameters - SingleMatch <SingleMatch>' -TestCases @(
+        @{ SingleMatch = $true }
+        @{ SingleMatch = $false }
+    ) {
+        param ($SingleMatch)
+
+        Function Test-Function {
+            [CmdletBinding(DefaultParameterSetName = 'SetWithoutHelp')]
+            param (
+                [Parameter(ParameterSetName = 'SetWithHelp', HelpMessage = 'Help Message')]
+                [Parameter(ParameterSetName = 'SetWithoutHelp')]
+                [string]
+                $ParamWithHelp,
+                
+                [Parameter(ParameterSetName = 'SetWithHelp')]
+                [switch]
+                $ParamWithoutHelp
+            )
+        }
+
+        $expected = '[string] ParamWithHelp - Help Message'
+
+        if ($SingleMatch) {
+            $Script = 'Test-Function -ParamWithHelp'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches
+        }
+        else {
+            $Script = 'Test-Function -'
+            $res = (TabExpansion2 -inputScript $Script).CompletionMatches | Where-Object CompletionText -eq '-ParamWithHelp'
+        }
+
+        $res.Count | Should -Be 1
+        $res.CompletionText | Should -BeExactly '-ParamWithHelp'
+        $res.ToolTip | Should -BeExactly $expected
+    }
+
+    It 'Should retrieve help message from dynamic parameter' {
+        Function Test-Function {
+            [CmdletBinding()]
+            param ()
+            dynamicparam {
+                $attr = [System.Management.Automation.ParameterAttribute]@{
+                    HelpMessage = "Howdy partner"
+                }
+                $attrCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
+                $attrCollection.Add($attr)
+
+                $dynParam = [System.Management.Automation.RuntimeDefinedParameter]::new('DynamicParam', [string], $attrCollection)
+
+                $paramDictionary = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
+                $paramDictionary.Add('DynamicParam', $dynParam)
+                $paramDictionary
+            }
+
+            end {}
+        }
+
+        $expected = '[string] DynamicParam - Howdy partner'
+        $Script = 'Test-Function -'
+        $res = (TabExpansion2 -inputScript $Script).CompletionMatches | Where-Object CompletionText -eq '-DynamicParam'
+        $res.Count | Should -Be 1
+        $res.CompletionText | Should -BeExactly '-DynamicParam'
+        $res.ToolTip | Should -BeExactly $expected
+    }
+
+    It 'Should have type and name for parameter without help message' {
+        Function Test-Function {
+            param (
+                [Parameter()]
+                $WithParamAttribute,
+
+                $WithoutParamAttribute
+            )
+        }
+
+        $Script = 'Test-Function -'
+        $res = (TabExpansion2 -inputScript $Script).CompletionMatches |
+            Where-Object CompletionText -in '-WithParamAttribute', '-WithoutParamAttribute' |
+            Sort-Object CompletionText
+        $res.Count | Should -Be 2
+
+        $res.CompletionText[0] | Should -BeExactly '-WithoutParamAttribute'
+        $res.ToolTip[0] | Should -BeExactly '[Object] WithoutParamAttribute'
+
+        $res.CompletionText[1] | Should -BeExactly '-WithParamAttribute'
+        $res.ToolTip[1] | Should -BeExactly '[Object] WithParamAttribute'
+    }
+
+    It 'Should ignore errors when faling to get HelpMessage resource' {
+        Function Test-Function {
+            param (
+                [Parameter(HelpMessageBaseName="invalid", HelpMessageResourceId="SomeId")]
+                $InvalidHelpParam
+            )
+        }
+
+        $expected = '[Object] InvalidHelpParam'
+        $Script = 'Test-Function -InvalidHelpParam'
+        $res = (TabExpansion2 -inputScript $Script).CompletionMatches
+        $res.Count | Should -Be 1
+        $res.CompletionText | Should -BeExactly '-InvalidHelpParam'
+        $res.ToolTip | Should -BeExactly $expected
     }
 
     Context 'Start-Process -Verb parameter completion' {
@@ -1262,6 +1566,13 @@ ConstructorTestClass(int i, bool b)
             $res = TabExpansion2 -inputScript $TextInput -cursorColumn $TextInput.Length
             $completionText = $res.CompletionMatches.CompletionText
             $completionText -join ' ' | Should -BeExactly $ExpectedPropertyTypes
+
+            foreach ($match in $res.CompletionMatches) {
+                $completionText = $match.CompletionText.Replace("""", "").Replace("'", "")
+                $listItemText = $match.ListItemText
+                $completionText | Should -BeExactly $listItemText
+                $match.ToolTip | Should -Not -BeNullOrEmpty
+            }
         }
 
         It "Test fallback to provider of current location if no path specified" -Skip:(!$IsWindows) {
@@ -1405,6 +1716,112 @@ ConstructorTestClass(int i, bool b)
         }
     }
 
+    Context "Join-String -Separator & -FormatString parameter completion" {
+        BeforeAll {
+            if ($IsWindows) {
+                $allSeparators = "',' ', ' ';' '; ' ""``r``n"" '-' ' '"
+                $allFormatStrings = "'[{0}]' '{0:N2}' ""``r``n    ```${0}"" ""``r``n    [string] ```${0}"""
+                $newlineSeparator = """``r``n"""
+                $newlineFormatStrings = """``r``n    ```${0}"" ""``r``n    [string] ```${0}"""
+            }
+            else {
+                $allSeparators = "',' ', ' ';' '; ' ""``n"" '-' ' '"
+                $allFormatStrings = "'[{0}]' '{0:N2}' ""``n    ```${0}"" ""``n    [string] ```${0}"""
+                $newlineSeparator = """``n"""
+                $newlineFormatStrings = """``n    ```${0}"" ""``n    [string] ```${0}"""
+            }
+
+            $commaSeparators = "',' ', '"
+            $semiColonSeparators = "';' '; '"
+            
+            $squareBracketFormatString = "'[{0}]'"
+            $curlyBraceFormatString = "'{0:N2}'"
+        }
+
+        It "Should complete for '<TextInput>'" -TestCases @(
+            @{ TextInput = "Join-String -Separator "; Expected = $allSeparators }
+            @{ TextInput = "Join-String -Separator '"; Expected = $allSeparators }
+            @{ TextInput = "Join-String -Separator """; Expected = $allSeparators.Replace("'", """") }
+            @{ TextInput = "Join-String -Separator ',"; Expected = $commaSeparators }
+            @{ TextInput = "Join-String -Separator "","; Expected = $commaSeparators.Replace("'", """") }
+            @{ TextInput = "Join-String -Separator ';"; Expected = $semiColonSeparators }
+            @{ TextInput = "Join-String -Separator "";"; Expected = $semiColonSeparators.Replace("'", """") }
+            @{ TextInput = "Join-String -FormatString "; Expected = $allFormatStrings }
+            @{ TextInput = "Join-String -FormatString '"; Expected = $allFormatStrings }
+            @{ TextInput = "Join-String -FormatString """; Expected = $allFormatStrings.Replace("'", """") }
+            @{ TextInput = "Join-String -FormatString ["; Expected = $squareBracketFormatString }
+            @{ TextInput = "Join-String -FormatString '["; Expected = $squareBracketFormatString }
+            @{ TextInput = "Join-String -FormatString ""["; Expected = $squareBracketFormatString.Replace("'", """") }
+            @{ TextInput = "Join-String -FormatString '{"; Expected = $curlyBraceFormatString }
+            @{ TextInput = "Join-String -FormatString ""{"; Expected = $curlyBraceFormatString.Replace("'", """") }
+        ) {
+            param($TextInput, $Expected)
+            $res = TabExpansion2 -inputScript $TextInput -cursorColumn $TextInput.Length
+            $completionText = $res.CompletionMatches.CompletionText
+            $completionText -join ' ' | Should -BeExactly $Expected
+
+            foreach ($match in $res.CompletionMatches) {
+                $toolTip = $match.ToolTip.Replace("""", "").Replace("'", "")
+                $completionText = $match.CompletionText.Replace("""", "").Replace("'", "")
+                $listItemText = $match.ListItemText
+                $toolTip.StartsWith($completionText) | Should -BeTrue
+                $toolTip.EndsWith($listItemText) | Should -BeTrue
+            }
+        }
+
+        It "Should complete for '<TextInput>'" -Skip:(!$IsWindows) -TestCases @(
+            @{ TextInput = "Join-String -Separator '``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator ""``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator '``r"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator ""``r"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator '``r``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator ""``r``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -FormatString '``"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString ""``"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString '``r"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString ""``r"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString '``r``"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString ""``r``"; Expected = $newlineFormatStrings }
+        ) {
+            param($TextInput, $Expected)
+            $res = TabExpansion2 -inputScript $TextInput -cursorColumn $TextInput.Length
+            $completionText = $res.CompletionMatches.CompletionText
+            $completionText -join ' ' | Should -BeExactly $Expected
+
+            foreach ($match in $res.CompletionMatches) {
+                $toolTip = $match.ToolTip.Replace("""", "").Replace("'", "")
+                $completionText = $match.CompletionText.Replace("""", "").Replace("'", "")
+                $listItemText = $match.ListItemText
+                $toolTip.StartsWith($completionText) | Should -BeTrue
+                $toolTip.EndsWith($listItemText) | Should -BeTrue
+            }
+        }
+
+        It "Should complete for '<TextInput>'" -Skip:($IsWindows) -TestCases @(
+            @{ TextInput = "Join-String -Separator '``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator ""``"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator '``n"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -Separator ""``n"; Expected = $newlineSeparator }
+            @{ TextInput = "Join-String -FormatString '``"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString ""``"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString '``n"; Expected = $newlineFormatStrings }
+            @{ TextInput = "Join-String -FormatString ""``n"; Expected = $newlineFormatStrings }
+        ) {
+            param($TextInput, $Expected)
+            $res = TabExpansion2 -inputScript $TextInput -cursorColumn $TextInput.Length
+            $completionText = $res.CompletionMatches.CompletionText
+            $completionText -join ' ' | Should -BeExactly $Expected
+
+            foreach ($match in $res.CompletionMatches) {
+                $toolTip = $match.ToolTip.Replace("""", "").Replace("'", "")
+                $completionText = $match.CompletionText.Replace("""", "").Replace("'", "")
+                $listItemText = $match.ListItemText
+                $toolTip.StartsWith($completionText) | Should -BeTrue
+                $toolTip.EndsWith($listItemText) | Should -BeTrue
+            }
+        }
+    }
+
     Context "Format cmdlet's View paramter completion" {
         BeforeAll {
             $viewDefinition = @'
@@ -1512,8 +1929,12 @@ ConstructorTestClass(int i, bool b)
 
     Context NativeCommand {
         BeforeAll {
-            $nativeCommand = (Get-Command -CommandType Application -TotalCount 1).Name
+            ## Find a native command that is not 'pwsh'. We will use 'pwsh' for fallback completer tests later.
+            $nativeCommand = Get-Command -CommandType Application -TotalCount 2 |
+                Where-Object Name -NotLike pwsh* |
+                Select-Object -First 1
         }
+
         It 'Completes native commands with -' {
             Register-ArgumentCompleter -Native -CommandName $nativeCommand -ScriptBlock {
                 param($wordToComplete, $ast, $cursorColumn)
@@ -1576,6 +1997,52 @@ ConstructorTestClass(int i, bool b)
             $res = TabExpansion2 -inputScript $line -cursorColumn $line.Length
             $res.CompletionMatches | Should -HaveCount 1
             $res.CompletionMatches.CompletionText | Should -BeExactly "-option"
+        }
+
+        It 'Covers an arbitrary unbound native command with -t' {
+            ## Register a completer for $nativeCommand.
+            Register-ArgumentCompleter -Native -CommandName $nativeCommand -ScriptBlock {
+                param($wordToComplete, $ast, $cursorColumn)
+                if ($wordToComplete -eq '-t') {
+                    return "-terminal"
+                }
+            }
+
+            ## Register a fallback native command completer.
+            Register-ArgumentCompleter -NativeFallback -ScriptBlock {
+                param($wordToComplete, $ast, $cursorColumn)
+                if ($wordToComplete -eq '-t') {
+                    return "-testing"
+                }
+            }
+
+            ## The specific completer will be used if it exists.
+            $line = "$nativeCommand -t"
+            $res = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches.CompletionText | Should -BeExactly "-terminal"
+
+            ## Otherwise, the fallback completer will kick in.
+            $line = "pwsh -t"
+            $res = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches.CompletionText | Should -BeExactly "-testing"
+
+            ## Remove the completer for $nativeCommand.
+            Register-ArgumentCompleter -Native -CommandName $nativeCommand -ScriptBlock $null
+
+            ## The fallback completer will be used for $nativeCommand.
+            $line = "$nativeCommand -t"
+            $res = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches.CompletionText | Should -BeExactly "-testing"
+
+            ## Remove the fallback completer for $nativeCommand.
+            Register-ArgumentCompleter -NativeFallback -ScriptBlock $null
+
+            ## The fallback completer will be used for $nativeCommand.
+            $res = TabExpansion2 -inputScript $line -cursorColumn $line.Length
+            $res.CompletionMatches | Should -HaveCount 0
         }
     }
 
@@ -1714,6 +2181,36 @@ class InheritedClassTest : System.Attribute
             $res = TabExpansion2 -inputScript $command -cursorColumn $command.Length
             $res.CompletionMatches.Count | Should -BeGreaterThan 0
             $res.CompletionMatches[0].CompletionText | Should -BeExactly $expectedCommand
+        }
+    }
+
+    Context "Script parameter completion" {
+        BeforeAll {
+            Setup -File -Path 'ModuleReqTest.ps1' -Content @'
+#requires -Modules ThisModuleDoesNotExist
+param ($Param1)
+'@
+            Setup -File -Path 'AdminReqTest.ps1' -Content @'
+#requires -RunAsAdministrator
+param ($Param1)
+'@
+            Push-Location ${TestDrive}\
+        }
+
+        AfterAll {
+            Pop-Location
+        }
+
+        It "Input should successfully complete script parameter for script with failed script requirements" {
+            $res = TabExpansion2 -inputScript '.\ModuleReqTest.ps1 -'
+            $res.CompletionMatches.Count | Should -BeGreaterThan 0
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly '-Param1'
+        }
+
+        It "Input should successfully complete script parameter for admin script while not elevated" {
+            $res = TabExpansion2 -inputScript '.\AdminReqTest.ps1 -'
+            $res.CompletionMatches.Count | Should -BeGreaterThan 0
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly '-Param1'
         }
     }
 
@@ -1966,6 +2463,42 @@ class InheritedClassTest : System.Attribute
             $Text.Length - $Text.Replace('`','').Length | Should -Be $LiteralBacktickDouble
 
             Remove-Item -LiteralPath $LiteralPath
+        }
+
+        It "Should add single quotes if there are double quotes in bare word file path" {
+			$BadQuote = [char]8220
+		    $TestFile1 = Join-Path -Path $TestDrive -ChildPath "Test1${BadQuote}File"
+            $null = New-Item -Path $TestFile1 -Force
+            $res = TabExpansion2 -inputScript "Get-ChildItem -Path $TestDrive\"
+            ($res.CompletionMatches | Where-Object ListItemText -Like "Test1?File").CompletionText | Should -Be "'$TestFile1'"
+            Remove-Item -LiteralPath $TestFile1 -Force
+        }
+
+        It "Should escape double quote if the input string uses double quotes" {
+			$BadQuote = [char]8220
+		    $TestFile1 = Join-Path -Path $TestDrive -ChildPath "Test1${BadQuote}File"
+            $null = New-Item -Path $TestFile1 -Force
+            $res = TabExpansion2 -inputScript "Get-ChildItem -Path `"$TestDrive\"
+            $Expected = "`"$($TestFile1.Insert($TestFile1.LastIndexOf($BadQuote), '`'))`""
+            ($res.CompletionMatches | Where-Object ListItemText -Like "Test1?File").CompletionText | Should -Be $Expected
+            Remove-Item -LiteralPath $TestFile1 -Force
+        }
+
+        It "Should escape single quotes in file paths" {
+			$SingleQuote = "'"
+		    $TestFile1 = Join-Path -Path $TestDrive -ChildPath "Test1${SingleQuote}File"
+            $null = New-Item -Path $TestFile1 -Force
+            # Regardless if the input string was singlequoted or not, we expect to add surrounding single quotes and
+            # escape the single quote in the file path with another singlequote.
+            $Expected = "'$($TestFile1.Insert($TestFile1.LastIndexOf($SingleQuote), "'"))'"
+
+            $res = TabExpansion2 -inputScript "Get-ChildItem -Path '$TestDrive\"
+            ($res.CompletionMatches | Where-Object ListItemText -Like "Test1?File").CompletionText | Should -Be $Expected
+
+            $res = TabExpansion2 -inputScript "Get-ChildItem -Path $TestDrive\"
+            ($res.CompletionMatches | Where-Object ListItemText -Like "Test1?File").CompletionText | Should -Be $Expected
+
+            Remove-Item -LiteralPath $TestFile1 -Force
         }
     }
 
@@ -2461,7 +2994,7 @@ class InheritedClassTest : System.Attribute
         }
 
         It "Test hashtable key completion in #requires statement for modules" {
-            $res = TabExpansion2 -inputScript "#requires -Modules @{" -cursorColumn 21
+            $res = TabExpansion2 -inputScript "#requires -Modules @{"
             $res.CompletionMatches.Count | Should -BeGreaterThan 0
             $res.CompletionMatches[0].CompletionText | Should -BeExactly "GUID"
         }
@@ -3130,23 +3663,23 @@ dir -Recurse `
         }
         It '<Intent>' -TestCases @(
             @{
-                Intent = 'Complete help keywords with minimum input'
+                Intent = 'Complete help keywords with minimal input'
                 Expected = @(
-                    'COMPONENT'
-                    'DESCRIPTION'
-                    'EXAMPLE'
-                    'EXTERNALHELP'
-                    'FORWARDHELPCATEGORY'
-                    'FORWARDHELPTARGETNAME'
-                    'FUNCTIONALITY'
-                    'INPUTS'
-                    'LINK'
-                    'NOTES'
-                    'OUTPUTS'
-                    'PARAMETER'
-                    'REMOTEHELPRUNSPACE'
-                    'ROLE'
-                    'SYNOPSIS'
+                    "COMPONENT",
+                    "DESCRIPTION",
+                    "EXAMPLE",
+                    "EXTERNALHELP",
+                    "FORWARDHELPCATEGORY",
+                    "FORWARDHELPTARGETNAME",
+                    "FUNCTIONALITY",
+                    "INPUTS",
+                    "LINK",
+                    "NOTES",
+                    "OUTPUTS",
+                    "PARAMETER",
+                    "REMOTEHELPRUNSPACE",
+                    "ROLE",
+                    "SYNOPSIS"
                 )
                 TestString = @'
 <#
@@ -3336,6 +3869,7 @@ function MyFunction ($param1, $param2)
     It 'Should complete module specification keys in using module statement' {
         $res = TabExpansion2 -inputScript 'using module @{'
         $res.CompletionMatches.CompletionText -join ' ' | Should -BeExactly "GUID MaximumVersion ModuleName ModuleVersion RequiredVersion"
+        $res.CompletionMatches[0].ToolTip | Should -Not -Be $res.CompletionMatches[0].CompletionText
     }
 
     It 'Should not fallback to file completion when completing typenames' {
@@ -3477,5 +4011,186 @@ Describe "WSMan Config Provider tab complete tests" -Tags Feature,RequireAdminOn
     ) {
         # https://github.com/PowerShell/PowerShell/issues/4744
         # TODO: move to test cases above once working
+    }
+
+    Context "Tab completion for switch cases on `$PSBoundParameters.Keys" {
+        It "Should complete parameter names in switch case for `$PSBoundParameters.Keys" {
+            $inputScript = @"
+function Test-Func {
+    param(
+        [string]`$Param1,
+        [string]`$Param2,
+        [int]`$Count
+    )
+    switch (`$PSBoundParameters.Keys) {
+        P
+    }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("P", $inputScript.IndexOf("Keys)")) + 1
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 2
+            $completionTexts = $res.CompletionMatches.CompletionText | Sort-Object
+            $completionTexts[0] | Should -BeExactly "Param1"
+            $completionTexts[1] | Should -BeExactly "Param2"
+        }
+
+        It "Should complete all parameter names when prefix matches single param" {
+            $inputScript = @"
+function Test-Func {
+    param(
+        [string]`$Name,
+        [int]`$Value
+    )
+    switch (`$PSBoundParameters.Keys) {
+        N
+    }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("N", $inputScript.IndexOf("Keys)")) + 1
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly "Name"
+        }
+
+        It "Should complete parameter names in scriptblock param" {
+            $inputScript = @"
+`$sb = {
+    param(
+        [string]`$ScriptParam1,
+        [string]`$ScriptParam2
+    )
+    switch (`$PSBoundParameters.Keys) {
+        S
+    }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("S", $inputScript.IndexOf("Keys)")) + 1
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 2
+            $completionTexts = $res.CompletionMatches.CompletionText | Sort-Object
+            $completionTexts[0] | Should -BeExactly "ScriptParam1"
+            $completionTexts[1] | Should -BeExactly "ScriptParam2"
+        }
+    }
+
+    Context "Tab completion for `$PSBoundParameters access patterns" {
+        It "Should complete parameter names for ContainsKey method" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1, [string]`$Param2, [int]`$Count)
+    if (`$PSBoundParameters.ContainsKey('P')) { }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'P'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 2
+            $completionTexts = $res.CompletionMatches.CompletionText | Sort-Object
+            $completionTexts[0] | Should -BeExactly "'Param1'"
+            $completionTexts[1] | Should -BeExactly "'Param2'"
+        }
+
+        It "Should complete parameter names for indexer access" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1, [string]`$Param2, [int]`$Count)
+    `$value = `$PSBoundParameters['P']
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'P'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 2
+            $completionTexts = $res.CompletionMatches.CompletionText | Sort-Object
+            $completionTexts[0] | Should -BeExactly "'Param1'"
+            $completionTexts[1] | Should -BeExactly "'Param2'"
+        }
+
+        It "Should complete parameter names for Remove method" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1, [string]`$Param2, [int]`$Count)
+    `$PSBoundParameters.Remove('C')
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'C'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly "'Count'"
+        }
+
+        It "Should complete with double quotes when using double-quoted string" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1, [string]`$Param2)
+    if (`$PSBoundParameters.ContainsKey("P")) { }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf('"P"') + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            $res.CompletionMatches | Should -HaveCount 2
+            $completionTexts = $res.CompletionMatches.CompletionText | Sort-Object
+            $completionTexts[0] | Should -BeExactly '"Param1"'
+            $completionTexts[1] | Should -BeExactly '"Param2"'
+        }
+
+        It "Should not complete for non-PSBoundParameters variable with indexer" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1)
+    `$hash = @{}
+    `$value = `$hash['P']
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'P'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            # Should not return Param1 as completion
+            $paramCompletion = $res.CompletionMatches | Where-Object { $_.CompletionText -eq "'Param1'" }
+            $paramCompletion | Should -BeNullOrEmpty
+        }
+
+        It "Should not complete for non-PSBoundParameters variable with ContainsKey" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1)
+    `$hash = @{}
+    if (`$hash.ContainsKey('P')) { }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'P'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            # Should not return Param1 as completion
+            $paramCompletion = $res.CompletionMatches | Where-Object { $_.CompletionText -eq "'Param1'" }
+            $paramCompletion | Should -BeNullOrEmpty
+        }
+
+        It "Should not complete for non-PSBoundParameters variable with Remove" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1)
+    `$hash = @{}
+    `$hash.Remove('P')
+}
+"@
+            $cursorPosition = $inputScript.IndexOf("'P'") + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            # Should not return Param1 as completion
+            $paramCompletion = $res.CompletionMatches | Where-Object { $_.CompletionText -eq "'Param1'" }
+            $paramCompletion | Should -BeNullOrEmpty
+        }
+
+        It "Should not complete for non-PSBoundParameters variable with double quotes" {
+            $inputScript = @"
+function Test-Func {
+    param([string]`$Param1)
+    `$hash = @{}
+    if (`$hash.ContainsKey("P")) { }
+}
+"@
+            $cursorPosition = $inputScript.IndexOf('"P"') + 2
+            $res = TabExpansion2 -inputScript $inputScript -cursorColumn $cursorPosition
+            # Should not return Param1 as completion
+            $paramCompletion = $res.CompletionMatches | Where-Object { $_.CompletionText -eq '"Param1"' }
+            $paramCompletion | Should -BeNullOrEmpty
+        }
     }
 }
