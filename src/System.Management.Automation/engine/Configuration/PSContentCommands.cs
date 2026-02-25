@@ -17,94 +17,28 @@ namespace Microsoft.PowerShell.Commands
     /// Implements Get-PSContentPath cmdlet.
     /// </summary>
     [Cmdlet(VerbsCommon.Get, "PSContentPath", HelpUri = "https://go.microsoft.com/fwlink/?linkid=2344910")]
-    [OutputType(typeof(string), typeof(PSObject))]
+    [OutputType(typeof(DirectoryInfo))]
     public class GetPSContentPathCommand : PSCmdlet
     {
         /// <summary>
-        /// Gets the size of the content directory.
-        /// </summary>
-        [Parameter(ParameterSetName = "Path")]
-        public SwitchParameter Size { get; set; }
-
-        /// <summary>
-        /// Gets the path to the user configuration file instead of the content path.
-        /// </summary>
-        [Parameter(Mandatory = true, ParameterSetName = "ConfigFile")]
-        public SwitchParameter ConfigFile { get; set; }
-
-        /// <summary>
         /// EndProcessing method of this cmdlet.
-        /// Outputs the PSContentPath or its size information.
+        /// Outputs the PSContentPath as a DirectoryInfo object with ConfigFile NoteProperty.
         /// </summary>
         protected override void EndProcessing()
         {
             try
             {
-                // If -ConfigFile is specified, return the config file path
-                if (ConfigFile)
-                {
-                    string configFilePath = PowerShellConfig.Instance.GetConfigFilePath(ConfigScope.CurrentUser);
-                    WriteObject(configFilePath);
-                    return;
-                }
-
                 var psContentPath = Utils.GetPSContentPath();
+                var configFilePath = PowerShellConfig.Instance.GetConfigFilePath(ConfigScope.CurrentUser);
 
-                if (Size)
-                {
-                    // Calculate directory size
-                    long totalSize = 0;
-                    int fileCount = 0;
-                    int directoryCount = 0;
-
-                    if (Directory.Exists(psContentPath))
-                    {
-                        try
-                        {
-                            var files = Directory.GetFiles(psContentPath, "*", SearchOption.AllDirectories);
-                            foreach (var file in files)
-                            {
-                                try
-                                {
-                                    var fileInfo = new FileInfo(file);
-                                    totalSize += fileInfo.Length;
-                                    fileCount++;
-                                }
-                                catch (UnauthorizedAccessException)
-                                {
-                                    // Skip files we can't access
-                                    WriteVerbose($"Skipping inaccessible file: {file}");
-                                }
-                                catch (FileNotFoundException)
-                                {
-                                    // Skip files that were deleted during enumeration
-                                    WriteVerbose($"Skipping deleted file: {file}");
-                                }
-                            }
-
-                            directoryCount = Directory.GetDirectories(psContentPath, "*", SearchOption.AllDirectories).Length;
-                        }
-                        catch (UnauthorizedAccessException ex)
-                        {
-                            WriteWarning($"Unable to calculate full size: {ex.Message}");
-                        }
-                    }
-
-                    // Create output object with path and size information
-                    var result = new PSObject();
-                    result.Properties.Add(new PSNoteProperty("Path", psContentPath));
-                    result.Properties.Add(new PSNoteProperty("SizeBytes", totalSize));
-                    result.Properties.Add(new PSNoteProperty("SizeMB", Math.Round(totalSize / 1024.0 / 1024.0, 2)));
-                    result.Properties.Add(new PSNoteProperty("SizeGB", Math.Round(totalSize / 1024.0 / 1024.0 / 1024.0, 2)));
-                    result.Properties.Add(new PSNoteProperty("Files", fileCount));
-                    result.Properties.Add(new PSNoteProperty("Directories", directoryCount));
-                    
-                    WriteObject(result);
-                }
-                else
-                {
-                    WriteObject(psContentPath);
-                }
+                // Create DirectoryInfo object
+                var directoryInfo = new DirectoryInfo(psContentPath);
+                
+                // Wrap in PSObject to add the ConfigFile NoteProperty
+                var result = PSObject.AsPSObject(directoryInfo);
+                result.Properties.Add(new PSNoteProperty("ConfigFile", configFilePath));
+                
+                WriteObject(result);
             }
             catch (Exception ex)
             {
@@ -120,7 +54,7 @@ namespace Microsoft.PowerShell.Commands
     /// <summary>
     /// Implements Set-PSContentPath cmdlet.
     /// </summary>
-    [Cmdlet(VerbsCommon.Set, "PSContentPath", SupportsShouldProcess = true, HelpUri = "https://go.microsoft.com/fwlink/?linkid=2344807")]
+    [Cmdlet(VerbsCommon.Set, "PSContentPath", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High, HelpUri = "https://go.microsoft.com/fwlink/?linkid=2344807")]
     public class SetPSContentPathCommand : PSCmdlet
     {
         /// <summary>
@@ -133,8 +67,8 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Resets the PSContentPath to the platform default.
         /// </summary>
-        [Parameter(Mandatory = true, ParameterSetName = "Reset")]
-        public SwitchParameter Reset { get; set; }
+        [Parameter(Mandatory = true, ParameterSetName = "Default")]
+        public SwitchParameter Default { get; set; }
 
         /// <summary>
         /// EndProcessing method of this cmdlet.
@@ -142,7 +76,7 @@ namespace Microsoft.PowerShell.Commands
         /// </summary>
         protected override void EndProcessing()
         {
-            if (Reset)
+            if (Default)
             {
                 ResetToDefault();
                 return;

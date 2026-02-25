@@ -44,6 +44,18 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
     }
 
     Context "Get-PSContentPath default behavior" {
+        It "Get-PSContentPath returns DirectoryInfo object with ConfigFile property" {
+            $result = Get-PSContentPath
+
+            # Should return a DirectoryInfo object
+            $result.GetType().Name | Should -Be 'DirectoryInfo'
+
+            # Should have a ConfigFile NoteProperty
+            $result.PSObject.Properties['ConfigFile'] | Should -Not -BeNullOrEmpty
+            $result.ConfigFile | Should -Not -BeNullOrEmpty
+            $result.ConfigFile | Should -BeLike '*powershell.config.json'
+        }
+
         It "Get-PSContentPath returns default Documents path when not configured" {
             # This test only works if no config was present at session start
             # Skip if a config already exists (indicates a custom path was set)
@@ -56,11 +68,11 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
                 # Note: The config FILE is stored in LocalAppData, but the content PATH defaults to Documents
                 if ($IsWindows) {
                     $expectedPath = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell'
-                    $result | Should -Be $expectedPath
+                    $result.FullName | Should -Be $expectedPath
                 } else {
                     # On Unix, should return XDG_DATA_HOME or ~/.local/share/powershell
-                    $result | Should -Not -BeNullOrEmpty
-                    $result | Should -BeLike '*powershell'
+                    $result.FullName | Should -Not -BeNullOrEmpty
+                    $result.FullName | Should -BeLike '*powershell'
                 }
             } else {
                 Set-ItResult -Skipped -Because "Config file exists from previous test - PSContentPath is session-level"
@@ -90,7 +102,7 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
 
             $customPath = if ($IsWindows) { "$env:TEMP\CustomPowerShell" } else { "/tmp/CustomPowerShell" }
 
-            Set-PSContentPath -Path $customPath -WarningAction SilentlyContinue
+            Set-PSContentPath -Path $customPath -WarningAction SilentlyContinue -Confirm:$false
 
             # Config file should now exist
             Test-Path $configPath | Should -Be $true
@@ -101,15 +113,17 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
         }
 
         It "Set-PSContentPath expands environment variables on Windows" -Skip:(!$IsWindows) {
-            Set-PSContentPath -Path '%TEMP%\PowerShell' -WarningAction SilentlyContinue
+            Set-PSContentPath -Path '%TEMP%\PowerShell' -WarningAction SilentlyContinue -Confirm:$false
 
             $result = Get-PSContentPath
-            $result | Should -Be "$env:TEMP\PowerShell"
-            $result | Should -Not -BeLike '*%TEMP%*'
+            # Normalize the expected path to handle short (8.3) vs long path names
+            $expectedPath = [System.IO.Path]::GetFullPath("$env:TEMP\PowerShell")
+            $result.FullName | Should -Be $expectedPath
+            $result.FullName | Should -Not -BeLike '*%TEMP%*'
         }
 
         It "Set-PSContentPath validates path input" {
-            { Set-PSContentPath -Path '' -WarningAction SilentlyContinue -ErrorAction Stop } | Should -Throw
+            { Set-PSContentPath -Path '' -WarningAction SilentlyContinue -Confirm:$false -ErrorAction Stop } | Should -Throw
         }
 
         It "Set-PSContentPath supports WhatIf" {
