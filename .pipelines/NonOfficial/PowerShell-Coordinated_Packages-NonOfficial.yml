@@ -91,3 +91,7 @@ extends:
 
     stages:
     - template: ../templates/stages/PowerShell-Coordinated_Packages-Stages.yml
+      parameters:
+        RUN_WINDOWS: ${{ parameters.RUN_WINDOWS }}
+        RUN_TEST_AND_RELEASE: ${{ parameters.RUN_TEST_AND_RELEASE }}
+        OfficialBuild: false

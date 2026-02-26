@@ -1,3 +1,13 @@
+parameters:
+  - name: RUN_WINDOWS
+    type: boolean
+    default: true
+  - name: RUN_TEST_AND_RELEASE
+    type: boolean
+    default: true
+  - name: OfficialBuild
+    type: boolean
+
 stages:
 - stage: prep
   jobs:
@@ -42,6 +52,9 @@ stages:
 - stage: macos
   displayName: macOS - build and sign
   dependsOn: ['prep']
+  variables:
+    - name: ps_official_build
+      value: ${{ parameters.OfficialBuild }}
   jobs:
   - template: /.pipelines/templates/mac.yml@self
     parameters:
@@ -53,6 +66,9 @@ stages:
 - stage: linux
   displayName: linux - build and sign
   dependsOn: ['prep']
+  variables:
+    - name: ps_official_build
+      value: ${{ parameters.OfficialBuild }}
   jobs:
   - template: /.pipelines/templates/linux.yml@self
     parameters:
@@ -104,6 +120,9 @@ stages:
   displayName: windows - build and sign
   dependsOn: ['prep']
   condition: and(succeeded(),eq('${{ parameters.RUN_WINDOWS }}','true'))
+  variables:
+    - name: ps_official_build
+      value: ${{ parameters.OfficialBuild }}
   jobs:
   - template: /.pipelines/templates/windows-hosted-build.yml@self
     parameters:
