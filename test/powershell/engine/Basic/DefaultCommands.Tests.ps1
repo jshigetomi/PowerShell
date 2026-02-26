@@ -476,7 +476,7 @@ Describe "Verify aliases and cmdlets" -Tags "CI" {
 "Cmdlet",       "Set-Location",                     "",                                 $($FullCLR -or $CoreWindows -or $CoreUnix),     "",                     "",                     "None"
 "Cmdlet",       "Set-MarkdownOption",               "",                                 $(             $CoreWindows -or $CoreUnix),     "",                     "",                     "None"
 "Cmdlet",       "Set-PSBreakpoint",                 "",                                 $($FullCLR -or $CoreWindows -or $CoreUnix),     "",                     "",                     "None"
-"Cmdlet",       "Set-PSContentPath",                "",                                 $(             $CoreWindows -or $CoreUnix),     "",                     "",                     "Medium"
+"Cmdlet",       "Set-PSContentPath",                "",                                 $(             $CoreWindows -or $CoreUnix),     "",                     "",                     "High"
 "Cmdlet",       "Set-PSDebug",                      "",                                 $($FullCLR -or $CoreWindows -or $CoreUnix),     "",                     "",                     "None"
 "Cmdlet",       "Set-PSSessionConfiguration",       "",                                 $($FullCLR -or $CoreWindows              ),     "",                     "",                     "Medium"
 "Cmdlet",       "Set-Service",                      "",                                 $($FullCLR -or $CoreWindows              ),     "",                     "",                     "Medium"
