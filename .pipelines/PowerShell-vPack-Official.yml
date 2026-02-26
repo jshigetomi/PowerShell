@@ -34,6 +34,10 @@ name: vPack_$(Build.SourceBranchName)_Prod_Create.${{ parameters.createVPack }}_
 
 variables:
   - template: templates/variables/PowerShell-vPack-Variables.yml
+    parameters:
+      debug: ${{ parameters.debug }}
+      ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
+      netiso: ${{ parameters.netiso }}
 
 resources:
   repositories:

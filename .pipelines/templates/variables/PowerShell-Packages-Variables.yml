@@ -1,3 +1,17 @@
+parameters:
+  - name: debug
+    type: boolean
+    default: false
+  - name: ForceAzureBlobDelete
+    type: string
+    default: 'false'
+  - name: ReleaseTagVar
+    type: string
+    default: 'fromBranch'
+  - name: disableNetworkIsolation
+    type: boolean
+    default: false
+
 variables:
   - name: CDP_DEFINITION_BUILD_COUNT
     value: $[counter('', 0)] # needed for onebranch.pipeline.version task

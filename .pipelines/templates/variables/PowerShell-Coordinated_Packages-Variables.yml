@@ -1,3 +1,20 @@
+parameters:
+  - name: InternalSDKBlobURL
+    type: string
+    default: ' '
+  - name: ReleaseTagVar
+    type: string
+    default: 'fromBranch'
+  - name: SKIP_SIGNING
+    type: string
+    default: 'NO'
+  - name: ENABLE_MSBUILD_BINLOGS
+    type: boolean
+    default: false
+  - name: FORCE_CODEQL
+    type: boolean
+    default: false
+
 variables:
   - name: PS_RELEASE_BUILD
     value: 1

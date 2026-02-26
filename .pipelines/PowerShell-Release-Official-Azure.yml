@@ -18,6 +18,8 @@ name: ev2-$(BUILD.SOURCEBRANCHNAME)-prod-$(Build.BuildId)
 
 variables:
   - template: templates/variables/PowerShell-Release-Azure-Variables.yml
+    parameters:
+      debug: ${{ parameters.debug }}
 
 resources:
   repositories:

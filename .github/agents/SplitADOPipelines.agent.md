@@ -37,6 +37,36 @@ For each pipeline file that uses the toggle switch pattern (e.g., `PowerShell-Pa
 
 **IMPORTANT**: Only extract the `variables:` and `stages:` sections. All other sections (parameters, resources, extends, etc.) remain in the pipeline files.
 
+**CRITICAL - Template Parameters**: If the extracted variables or stages sections reference any parameters using `${{ parameters.ParameterName }}` syntax:
+
+1. **Add a parameters section** to the template file defining all referenced parameters:
+   ```yaml
+   parameters:
+     - name: ReleaseTagVar
+       type: string
+       default: 'fromBranch'
+     - name: SomeOtherParam
+       type: string
+       default: 'value'
+   
+   variables:
+     - name: ReleaseTagVar
+       value: ${{ parameters.ReleaseTagVar }}
+   ```
+
+2. **Pass parameters when including the template** in both Official and NonOfficial pipelines:
+   ```yaml
+   variables:
+     - template: templates/PowerShell-Packages-Variables.yml
+       parameters:
+         ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
+         SomeOtherParam: ${{ parameters.SomeOtherParam }}
+   ```
+
+3. **Same applies to stage templates** - if stages reference parameters, define them in the template and pass them from the pipelines.
+
+**Why this matters**: Without parameter definitions and pass-through, template parameters will be empty/undefined, causing pipeline failures like "Missing an argument for parameter".
+
 ### Step 2: Create Official Pipeline (In-Place Refactoring)
 
 The original toggle-based file becomes the Official pipeline:

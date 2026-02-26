@@ -32,6 +32,11 @@ name: pkgs-$(BUILD.SOURCEBRANCHNAME)-prod-$(Build.BuildId)
 
 variables:
   - template: templates/variables/PowerShell-Packages-Variables.yml
+    parameters:
+      debug: ${{ parameters.debug }}
+      ForceAzureBlobDelete: ${{ parameters.ForceAzureBlobDelete }}
+      ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
+      disableNetworkIsolation: ${{ parameters.disableNetworkIsolation }}
 
 resources:
   pipelines:

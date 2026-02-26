@@ -46,6 +46,12 @@ resources:
 
 variables:
   - template: templates/variables/PowerShell-Coordinated_Packages-Variables.yml
+    parameters:
+      InternalSDKBlobURL: ${{ parameters.InternalSDKBlobURL }}
+      ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
+      SKIP_SIGNING: ${{ parameters.SKIP_SIGNING }}
+      ENABLE_MSBUILD_BINLOGS: ${{ parameters.ENABLE_MSBUILD_BINLOGS }}
+      FORCE_CODEQL: ${{ parameters.FORCE_CODEQL }}
 
 extends:
   template: v2/OneBranch.Official.CrossPlat.yml@onebranchTemplates

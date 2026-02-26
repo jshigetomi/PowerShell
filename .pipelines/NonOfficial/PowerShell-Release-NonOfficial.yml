@@ -34,6 +34,9 @@ name: release-$(BUILD.SOURCEBRANCHNAME)-nonofficial-$(Build.BuildId)
 
 variables:
   - template: ../templates/variables/PowerShell-Release-Variables.yml
+    parameters:
+      debug: ${{ parameters.debug }}
+      ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
 
 resources:
   repositories:
