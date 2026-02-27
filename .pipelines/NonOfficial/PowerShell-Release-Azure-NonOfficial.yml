@@ -30,10 +30,10 @@ resources:
 
   pipelines:
     - pipeline: CoOrdinatedBuildPipeline
-      source: 'PowerShell-Coordinated Binaries-Official'
+      source: 'PowerShell-Coordinated_Packages-NonOfficial'
 
     - pipeline: PSPackagesOfficial
-      source: 'PowerShell-Packages-Official'
+      source: 'PowerShell-Packages-NonOfficial'
       trigger:
         branches:
           include:

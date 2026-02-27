@@ -41,7 +41,7 @@ variables:
 resources:
   pipelines:
     - pipeline: CoOrdinatedBuildPipeline
-      source: 'PowerShell-Coordinated Binaries-Official'
+      source: 'PowerShell-Coordinated_Packages-NonOfficial'
       trigger:
         branches:
           include:
