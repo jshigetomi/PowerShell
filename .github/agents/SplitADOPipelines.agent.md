@@ -79,3 +79,29 @@ The original toggle-based file becomes the Official pipeline:
    ```
 
 **Note**: The NonOfficial pipeline uses `../templates/` because it's one directory deeper than the Official pipeline.
+
+### Step 4: Link NonOfficial Pipelines to NonOfficial Dependencies
+
+After creating NonOfficial pipelines, ensure they consume artifacts from other **NonOfficial** pipelines, not Official ones.
+
+1. **Check the `resources:` section** in each NonOfficial pipeline for `pipelines:` dependencies
+2. **Identify Official pipeline references** that need to be changed to NonOfficial
+3. **Update the `source:` field** to point to the NonOfficial version
+
+**Example Problem:** NonOfficial pipeline pointing to Official dependency
+```yaml
+resources:
+  pipelines:
+    - pipeline: CoOrdinatedBuildPipeline
+      source: 'PowerShell-Coordinated Binaries-Official'  # ❌ Wrong - Official!
+```
+
+**Solution:** Update to NonOfficial dependency
+```yaml
+resources:
+  pipelines:
+    - pipeline: CoOrdinatedBuildPipeline
+      source: 'PowerShell-Coordinated Binaries-NonOfficial'  # ✅ Correct - NonOfficial!
+```
+
+**IMPORTANT**: The `source:` field must match the **exact ADO pipeline definition name** as it appears in Azure DevOps, not necessarily the file name.
