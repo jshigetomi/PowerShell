@@ -37,36 +37,6 @@ For each pipeline file that uses the toggle switch pattern (e.g., `PowerShell-Pa
 
 **IMPORTANT**: Only extract the `variables:` and `stages:` sections. All other sections (parameters, resources, extends, etc.) remain in the pipeline files.
 
-**CRITICAL - Template Parameters**: If the extracted variables or stages sections reference any parameters using `${{ parameters.ParameterName }}` syntax:
-
-1. **Add a parameters section** to the template file defining all referenced parameters:
-   ```yaml
-   parameters:
-     - name: ReleaseTagVar
-       type: string
-       default: 'fromBranch'
-     - name: SomeOtherParam
-       type: string
-       default: 'value'
-   
-   variables:
-     - name: ReleaseTagVar
-       value: ${{ parameters.ReleaseTagVar }}
-   ```
-
-2. **Pass parameters when including the template** in both Official and NonOfficial pipelines:
-   ```yaml
-   variables:
-     - template: templates/PowerShell-Packages-Variables.yml
-       parameters:
-         ReleaseTagVar: ${{ parameters.ReleaseTagVar }}
-         SomeOtherParam: ${{ parameters.SomeOtherParam }}
-   ```
-
-3. **Same applies to stage templates** - if stages reference parameters, define them in the template and pass them from the pipelines.
-
-**Why this matters**: Without parameter definitions and pass-through, template parameters will be empty/undefined, causing pipeline failures like "Missing an argument for parameter".
-
 ### Step 2: Create Official Pipeline (In-Place Refactoring)
 
 The original toggle-based file becomes the Official pipeline:
@@ -109,3 +79,29 @@ The original toggle-based file becomes the Official pipeline:
    ```
 
 **Note**: The NonOfficial pipeline uses `../templates/` because it's one directory deeper than the Official pipeline.
+
+### Step 4: Link NonOfficial Pipelines to NonOfficial Dependencies
+
+After creating NonOfficial pipelines, ensure they consume artifacts from other **NonOfficial** pipelines, not Official ones.
+
+1. **Check the `resources:` section** in each NonOfficial pipeline for `pipelines:` dependencies
+2. **Identify Official pipeline references** that need to be changed to NonOfficial
+3. **Update the `source:` field** to point to the NonOfficial version
+
+**Example Problem:** NonOfficial pipeline pointing to Official dependency
+```yaml
+resources:
+  pipelines:
+    - pipeline: CoOrdinatedBuildPipeline
+      source: 'PowerShell-Coordinated Binaries-Official'  # ❌ Wrong - Official!
+```
+
+**Solution:** Update to NonOfficial dependency
+```yaml
+resources:
+  pipelines:
+    - pipeline: CoOrdinatedBuildPipeline
+      source: 'PowerShell-Coordinated Binaries-NonOfficial'  # ✅ Correct - NonOfficial!
+```
+
+**IMPORTANT**: The `source:` field must match the **exact ADO pipeline definition name** as it appears in Azure DevOps, not necessarily the file name.
