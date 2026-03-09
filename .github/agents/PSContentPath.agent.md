@@ -1,125 +1,193 @@
 ---
-description: 'Agent for working with PSContentPath integration in PSResourceGet'
+description: 'Agent for implementing and reviewing PSContentPath feature - configurable user content paths for PowerShell modules, scripts, help files, and profiles.'
 tools: [vscode, execute, read, agent, edit, search, web, todo]
 ---
 
-# PSContentPath Agent
+# PSContentPath Feature Agent
 
-## Feature Summary: PSContentPath Infrastructure (PR #26509)
+## Purpose
 
-### Overview
-The `PSContentPath` feature introduces a configurable user content path system for PowerShell, allowing users to customize where PowerShell stores user content (modules, scripts, help files, and profiles). This addresses long-standing community requests for flexible content storage, particularly for roaming profiles and containerized environments.
+This agent assists with implementing, reviewing, and maintaining the PSContentPath infrastructure feature. It provides guidance on:
+- Adding or modifying PSContentPath-related code
+- Implementing the cmdlets: `Get-PSContentPath`, `Set-PSContentPath`, `Move-PSContent`
+- Ensuring consistent path resolution across the codebase
+- Reviewing changes for data safety and backward compatibility
 
-### Related Issues/RFCs
-- Community feedback: [#15552](https://github.com/PowerShell/PowerShell/issues/15552)
-- PSResourceGet integration: [PowerShell/PSResourceGet#1912](https://github.com/PowerShell/PSResourceGet/pull/1912)
-- RFC: [PowerShell/PowerShell-RFC#388](https://github.com/PowerShell/PowerShell-RFC/pull/388)
+## When to Use This Agent
 
-### Key Changes
+- Implementing new functionality related to user content paths
+- Modifying module, script, help, or profile path resolution
+- Reviewing PRs that touch PSContentPath infrastructure
+- Debugging path resolution issues
+- Adding PSResourceGet integration points
 
-#### New Cmdlets
-- **`Get-PSContentPath`** - Retrieves the current PowerShell content path as a `DirectoryInfo` object
-  - Returns a `System.IO.DirectoryInfo` object with an additional `ConfigFile` NoteProperty
-  - The `ConfigFile` property contains the path to the user configuration file
-  - No parameters - always returns both the directory and config file information
-- **`Set-PSContentPath`** - Sets a custom content path location
-  - `-Path` parameter to set a custom path
-  - `-Default` parameter to reset to platform default
-  - ConfirmImpact is set to High, prompting for confirmation by default
+## When NOT to Use This Agent
 
-#### Path Defaults
-- **Windows**: Changed from `Documents\PowerShell` to `LocalAppData\PowerShell`
-- **Fallback logic**: Checks LocalAppData first, then OneDrive
-
-#### Architecture
-- New internal variables: `DefaultPSContentDirectory`, `LocalAppDataPSContentDirectory`
-- Readonly PowerShell variable: `$PSUserContentPath` exposes the current content path
-- Configuration key: `PSUserContentPathConfigKey` for persisting custom path in powershell.config.json
-- Centralized API: `Utils.GetPSContentPath()` for all content path references
-- Lazy migration from old config directory to new default location
+- General PowerShell cmdlet development unrelated to content paths
+- PowerShellGet compatibility work (this feature is PSResourceGet-only)
+- System-wide installation paths (AllUsers scope)
 
 ---
 
-## Discussion Summary
+## Architecture Overview
 
-### Key Participants
-- **@jshigetomi** (Author)
-- **@iSazonov** (Reviewer)
-- **@kilasuit** (Reviewer)
-- **@Copilot** (Automated review)
+### Path Resolution Order
 
-### Major Discussion Points
+The centralized API `Utils.GetPSContentPath()` resolves paths in this order:
 
-#### 1. Migration Cmdlets Necessity (@iSazonov)
-**Position**: Helper cmdlets may be unnecessary - just add the new path and install modules there by default.
-- Quote: "If all the modules I installed work as before, why should I explicitly move them to another location?"
-- The old scheme will coexist with the new one
-- Users can roll back from PSResourceGet to PowerShellGet
+1. **Environment Variable**: `$env:PSUserContentPath` (if set)
+2. **Configuration File**: `powershell.config.json` PSContentPath setting
+3. **Platform Defaults**:
+   - **Windows**: `$env:LOCALAPPDATA\PowerShell` (primary), then `Documents\PowerShell` (OneDrive fallback)
+   - **Unix/macOS**: `~/.local/share/powershell`
 
-#### 2. Data Loss Concerns (@Copilot)
-**Issue**: Potential data loss if copy succeeds but deletion fails during move operation.
-- PSContentPath gets updated to destination before source cleanup completes
-- **Author response**: Considering letting users delete manually instead of automatic deletion
+### Key Internal Variables
 
-#### 3. PSResourceGet vs PowerShellGet Support
-- Feature only supported in PSResourceGet, NOT PowerShellGet
-- This means old and new schemes will coexist
-- @iSazonov argues this means migration tools may create confusion
+| Variable | Description |
+|----------|-------------|
+| `Platform.DefaultPSContentDirectory` | Platform default (Documents\PowerShell on Windows) |
+| `Platform.LocalAppDataPSContentDirectory` | LocalAppData location (Windows only) |
+| `PSUserContentPathEnvVar` | Environment variable name for override |
 
-#### 4. OneDrive Replication Concerns (@iSazonov)
-- Skeptical that replicating developer environment via OneDrive is beneficial
-- Personal experience: Rejected this scenario due to sync problems
-- Believes concerns about changing defaults are "greatly exaggerated"
+### Cmdlet Summary
 
-#### 5. Historical Precedent
-@iSazonov cited Install-Module behavior change:
-- PowerShellGet 1.x: Default was AllUsers (required elevation)
-- PowerShellGet 2.0+: Default is CurrentUser (no elevation)
-- This shows "changes in this area did not cause a catastrophe"
-
-### Copilot Code Review Issues
-1. **ScriptBlock invocation pattern** - Using `InvokeCommand.NewScriptBlock` with `InvokeWithContext` for Copy-Item is fragile; suggested using direct C# file operations
-2. **Error handling** - Terminating error thrown without rollback mechanism if deletion fails after successful copy
-
-### Current Status
-- Draft PR
-- Labels: `CL-Engine`
-- 35 commits, +731/-47 lines across 13 files
-- Awaiting review from @adityapatwardhan and @daxian-dbw
+| Cmdlet | Purpose | Key Parameters |
+|--------|---------|----------------|
+| `Get-PSContentPath` | Get current content path | `-Size` (show directory size info) |
+| `Set-PSContentPath` | Configure custom path | `-Path` (single absolute path) |
+| `Move-PSContent` | Migrate content between locations | `-Path`, `-Destination`, `-Copy`, `-Force` |
 
 ---
 
-## Agent Instructions
+## Implementation Guidelines
 
-When working with PSContentPath-related code:
+### 1. Always Use the Centralized API
 
-1. **Understand the path resolution order**:
-   - Check `PSContentPathConfigKey` in powershell.config.json first
-   - Fall back to LocalAppData, then OneDrive on Windows
-   - Use platform-specific defaults on Unix
-   - The readonly `$PSUserContentPath` variable exposes the resolved path
+```csharp
+// ✅ CORRECT: Use centralized API
+string contentPath = Utils.GetPSContentPath();
 
-2. **Use centralized API**:
-   - Always use `Utils.GetPSContentPath()` for content path resolution
-   - Don't hardcode paths like `Documents\PowerShell`
+// ❌ WRONG: Don't hardcode paths
+string contentPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PowerShell");
+```
 
-3. **Configuration reading best practices**:
-   - Use `Utils.GetPolicySetting<T>(Utils.SystemWideThenCurrentUserConfig)` to read from both system-wide AND current user config
-   - Group Policy takes precedence over config file settings
-   - This pattern is demonstrated in `ClrFacade.IsTrustedHost()` (from custom forks)
-   - Example pattern:
-     ```csharp
-     var setting = Utils.GetPolicySetting<SettingType>(Utils.SystemWideThenCurrentUserConfig);
-     ```
-   - For PSContentPath specifically, currently only reads from `ConfigScope.CurrentUser`
-   - Consider if system-wide config should also be checked
+### 2. Path Parameter Conventions
 
-4. **Consider coexistence**:
-   - Old path locations must continue to work
-   - PowerShellGet will NOT support this feature
-   - Only PSResourceGet integrates with new paths
+Follow existing PowerShell cmdlet patterns:
+- Use `-Path` for source (matches `Move-Item`, `Copy-Item`)
+- Use `-Destination` for target
+- Use `-LiteralPath` when wildcards should not be expanded
 
-5. **Migration considerations**:
-   - Lazy migration happens on startup
-   - Config files migrate from old location to new location automatically
-   - Be cautious about data loss during move operations
+### 3. Error Handling for File Operations
+
+Implement robust error handling with recovery guidance:
+
+```csharp
+// ✅ CORRECT: Separate phases with clear error handling
+// Phase 1: Copy (fail fast if this fails)
+// Phase 2: Delete source (collect errors, don't fail fast)
+// Phase 3: Update config (only if previous phases succeeded)
+
+// ❌ WRONG: Update config before operations complete
+PowerShellConfig.Instance.SetPSContentPath(destinationPath);
+// ... then do file operations that might fail
+```
+
+### 4. Coexistence with Old Paths
+
+The old path scheme must continue to work:
+- PowerShellGet does NOT support PSContentPath
+- Users may have modules in both old and new locations
+- Module resolution should check both paths
+
+### 5. Avoid ScriptBlock Invocation for File Operations
+
+Use direct C# file operations instead of invoking PowerShell cmdlets:
+
+```csharp
+// ✅ CORRECT: Direct C# operations
+foreach (var file in Directory.GetFiles(sourcePath))
+{
+    File.Copy(file, Path.Combine(destPath, Path.GetFileName(file)), overwrite: true);
+}
+
+// ❌ AVOID: ScriptBlock invocation (fragile, harder to debug)
+var copyCmd = InvokeCommand.NewScriptBlock(@"Copy-Item ...");
+copyCmd.InvokeWithContext(...);
+```
+
+---
+
+## Code Review Checklist
+
+When reviewing PSContentPath-related changes:
+
+### Data Safety
+- [ ] No data loss scenarios if operations partially fail
+- [ ] Config updates happen AFTER successful file operations
+- [ ] Clear recovery instructions provided on partial failure
+- [ ] Source not deleted until destination is verified
+
+### API Consistency
+- [ ] Uses `Utils.GetPSContentPath()` instead of hardcoded paths
+- [ ] Parameter names match PowerShell conventions (`-Path`, `-Destination`)
+- [ ] Single-value parameters don't accept pipeline input unnecessarily
+
+### Backward Compatibility
+- [ ] Old path locations still work
+- [ ] No breaking changes to existing module resolution
+- [ ] PowerShellGet scenarios unaffected
+
+### Error Handling
+- [ ] Appropriate use of terminating vs non-terminating errors
+- [ ] Clear error messages with actionable guidance
+- [ ] Proper cleanup on failure
+
+---
+
+## Known Issues and Considerations
+
+### From PR Discussion
+
+1. **Migration Cmdlets Debate**: Some reviewers question whether `Move-PSContent` is necessary. The old scheme will coexist, so users could just start using the new location without migrating.
+
+2. **OneDrive Sync Concerns**: OneDrive replication of developer environments can cause sync conflicts. The default was changed to LocalAppData to avoid this.
+
+3. **PSResourceGet-Only**: This feature only works with PSResourceGet, not PowerShellGet. This is by design but means both module systems will coexist.
+
+### Technical Debt
+
+- Consider replacing ScriptBlock invocation in `Move-PSContent` with direct C# file operations
+- Thread safety for cached path values (use `volatile` or accept eventual consistency)
+
+---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/System.Management.Automation/engine/Configuration/PSContentPathCommands.cs` | Cmdlet implementations |
+| `src/System.Management.Automation/engine/Utils.cs` | `GetPSContentPath()` API |
+| `src/System.Management.Automation/engine/Platform.cs` | Platform-specific path defaults |
+| `src/System.Management.Automation/engine/Configuration/PowerShellConfig.cs` | Config file handling |
+| `src/System.Management.Automation/help/HelpUtils.cs` | Help path resolution using PSContentPath |
+
+---
+
+## Testing Guidance
+
+When testing PSContentPath changes:
+
+1. **Test both paths exist**: Verify modules work from old and new locations
+2. **Test environment variable override**: Set `$env:PSUserContentPath` and verify it takes precedence
+3. **Test config persistence**: Set path via cmdlet, restart PowerShell, verify it persists
+4. **Test migration scenarios**: Move content, verify destination, check source cleanup
+5. **Test failure scenarios**: Simulate permission errors, verify no data loss
+
+---
+
+## Related Links
+
+- RFC: [PowerShell-RFC#388](https://github.com/PowerShell/PowerShell-RFC/pull/388)
+- Community Issue: [#15552](https://github.com/PowerShell/PowerShell/issues/15552)
+- PSResourceGet Integration: [PSResourceGet#1912](https://github.com/PowerShell/PSResourceGet/pull/1912)
