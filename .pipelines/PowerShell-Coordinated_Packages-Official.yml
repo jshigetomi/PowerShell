@@ -25,11 +25,8 @@ parameters:
     displayName: Enable MSBuild Binary Logs
     type: boolean
     default: false
-  - name: OfficialBuild
-    type: boolean
-    default: false
 
-name: bins-$(BUILD.SOURCEBRANCHNAME)-prod.${{ parameters.OfficialBuild }}-$(Build.BuildId)
+name: bins-$(BUILD.SOURCEBRANCHNAME)-prod.true-$(Build.BuildId)
 
 resources:
   repositories:
@@ -78,8 +75,15 @@ variables:
   - group: mscodehub-feed-read-akv
   - name: ENABLE_MSBUILD_BINLOGS
     value: ${{ parameters.ENABLE_MSBUILD_BINLOGS }}
-  - name: templateFile
-    value: ${{ iif ( parameters.OfficialBuild, 'v2/OneBranch.Official.CrossPlat.yml@onebranchTemplates', 'v2/OneBranch.NonOfficial.CrossPlat.yml@onebranchTemplates' ) }}
+  - ${{ if eq(parameters['FORCE_CODEQL'],'true') }}:
+    # Cadence is hours before CodeQL will allow a re-upload of the database
+    - name: CodeQL.Cadence
+      value: 1
+  - name: CODEQL_ENABLED
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(parameters['FORCE_CODEQL'],'true')) }}:
+      value: true
+    ${{ else }}:
+      value: false
   # Fix for BinSkim ICU package error in Linux containers
   - name: DOTNET_SYSTEM_GLOBALIZATION_INVARIANT
     value: true
@@ -87,10 +91,10 @@ variables:
   - name: ob_sdl_binskim_enabled
     value: false
   - name: ps_official_build
-    value: ${{ parameters.OfficialBuild }}
+    value: true
 
 extends:
-  template: ${{ variables.templateFile }}
+  template: v2/OneBranch.Official.CrossPlat.yml@onebranchTemplates
   parameters:
     featureFlags:
       LinuxHostVersion:
