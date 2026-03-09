@@ -25,6 +25,10 @@ parameters:
     displayName: Enable MSBuild Binary Logs
     type: boolean
     default: false
+  - name: FORCE_CODEQL
+    displayName: Debugging - Enable CodeQL and set cadence to 1 hour
+    type: boolean
+    default: false
 
 name: bins-$(BUILD.SOURCEBRANCHNAME)-prod.true-$(Build.BuildId)
 
