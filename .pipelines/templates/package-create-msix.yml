@@ -266,7 +266,7 @@ jobs:
       displayName: 'Create StoreBroker Package (Stable/LTS)'
       condition: or(eq(variables['STABLE'], 'true'), eq(variables['LTS'], 'true'))
       inputs:
-        serviceEndpoint: 'StoreAppPublish-Stable'
+        serviceEndpoint: 'StoreAppPublish-Private'
         sbConfigPath: '$(SBConfigPath)'
         sourceFolder: '$(BundleDir)'
         contents: '*.msixBundle'
