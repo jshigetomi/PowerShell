@@ -4281,6 +4281,11 @@ function New-MSIXPackage
         $ProductNameSuffix = 'Private'
     }
 
+    # Add LTS suffix to filename so both Stable and LTS MSIXs can coexist
+    if ($LTS -and -not $Private) {
+        $packageName += "-lts"
+    }
+
     if ($ProductNameSuffix) {
         $packageName += "-$ProductNameSuffix"
     }
