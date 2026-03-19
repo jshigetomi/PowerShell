@@ -4274,23 +4274,8 @@ function New-MSIXPackage
 
     $makepri = Get-Item (Join-Path $makeappx.Directory "makepri.exe") -ErrorAction Stop
 
+    $displayName = $ProductName
     $ProductSemanticVersion = Get-PackageSemanticVersion -Version $ProductVersion
-    $productSemanticVersionWithName = $ProductName + '-' + $ProductSemanticVersion
-    $packageName = $productSemanticVersionWithName
-    if ($Private) {
-        $ProductNameSuffix = 'Private'
-    }
-
-    # Add LTS suffix to filename so both Stable and LTS MSIXs can coexist
-    if ($LTS -and -not $Private) {
-        $packageName += "-lts"
-    }
-
-    if ($ProductNameSuffix) {
-        $packageName += "-$ProductNameSuffix"
-    }
-
-    $displayName = $productName
 
     if ($Private) {
         $ProductName = 'PowerShell-Private'
@@ -4305,6 +4290,16 @@ function New-MSIXPackage
 
     Write-Verbose -Verbose "ProductName: $productName"
     Write-Verbose -Verbose "DisplayName: $displayName"
+
+    $packageName = $ProductName + '-' + $ProductSemanticVersion
+    if ($Private) {
+        $ProductNameSuffix = 'Private'
+    }
+
+    # Architecture needs to be in the name, Private scenario overrides
+    if ($ProductNameSuffix) {
+        $packageName += "-$ProductNameSuffix"
+    }
 
     $ProductVersion = Get-WindowsVersion -PackageName $packageName
 

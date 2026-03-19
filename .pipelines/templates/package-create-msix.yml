@@ -90,8 +90,8 @@ jobs:
         New-Item $outputDir -Type Directory -Force > $null
 
         # Separate LTS and Stable/Preview MSIX files by filename convention
-        $ltsMsix = @(Get-ChildItem $sourceDir -Filter '*.msix' | Where-Object { $_.BaseName -match '-lts-' })
-        $stableMsix = @(Get-ChildItem $sourceDir -Filter '*.msix' | Where-Object { $_.BaseName -notmatch '-lts-' })
+        $ltsMsix = @(Get-ChildItem $sourceDir -Filter '*.msix' | Where-Object { $_.BaseName -match '-LTS-' })
+        $stableMsix = @(Get-ChildItem $sourceDir -Filter '*.msix' | Where-Object { $_.BaseName -notmatch '-LTS-' })
 
         Write-Verbose -Verbose "Stable/Preview MSIX files: $($stableMsix.Name -join ', ')"
         Write-Verbose -Verbose "LTS MSIX files: $($ltsMsix.Name -join ', ')"
@@ -259,10 +259,10 @@ jobs:
         Write-Verbose -Verbose "Available bundles: $($bundleFiles.Name -join ', ')"
 
         if ($IsLTS) {
-          $bundleFile = $bundleFiles | Where-Object { $_.Name -match '-lts\.msixbundle$' }
+          $bundleFile = $bundleFiles | Where-Object { $_.Name -match '-LTS-' }
         } else {
           # Catches Stable or Preview
-          $bundleFile = $bundleFiles | Where-Object { $_.Name -notmatch '-lts\.msixbundle$' }
+          $bundleFile = $bundleFiles | Where-Object { $_.Name -notmatch '-LTS-' }
         }
 
         if (-not $bundleFile) {
