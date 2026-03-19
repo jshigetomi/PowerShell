@@ -4291,6 +4291,8 @@ function New-MSIXPackage
     Write-Verbose -Verbose "ProductName: $productName"
     Write-Verbose -Verbose "DisplayName: $displayName"
 
+    $packageName = $ProductName + '-' + $ProductSemanticVersion
+
     # Appends Architecture to the package name
     if ($ProductNameSuffix) {
         $packageName += "-$ProductNameSuffix"
