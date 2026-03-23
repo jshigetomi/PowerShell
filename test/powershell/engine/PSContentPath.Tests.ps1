@@ -4,12 +4,7 @@
 Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
     BeforeAll {
         # Backup any existing config files
-        # Config now defaults to LocalAppData instead of Documents on Windows
-        $configPath = if ($IsWindows) {
-            Join-Path $env:LOCALAPPDATA 'PowerShell' 'powershell.config.json'
-        } else {
-            Join-Path $HOME '.config' 'powershell' 'powershell.config.json'
-        }
+        $configPath = (Get-PSContentPath).ConfigFile
 
         if (Test-Path $configPath) {
             $script:configBackup = Get-Content $configPath -Raw
@@ -25,7 +20,7 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
 
     AfterAll {
         # Restore original config if it existed
-        if ($script:configBackup) {
+        if ($null -ne $script:configBackup) {
             Set-Content -Path $configPath -Value $script:configBackup -Force
         } elseif (Test-Path $configPath) {
             Remove-Item $configPath -Force -ErrorAction SilentlyContinue
@@ -35,7 +30,7 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
     AfterEach {
         # Clean up any test config files created during tests
         if (Test-Path $configPath) {
-            if ($script:configBackup) {
+            if ($null -ne $script:configBackup) {
                 Set-Content -Path $configPath -Value $script:configBackup -Force
             } else {
                 Remove-Item $configPath -Force -ErrorAction SilentlyContinue
@@ -76,6 +71,7 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
                 }
             } else {
                 Set-ItResult -Skipped -Because "Config file exists from previous test - PSContentPath is session-level"
+                return
             }
         }
 

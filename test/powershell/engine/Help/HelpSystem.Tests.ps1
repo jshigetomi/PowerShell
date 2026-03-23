@@ -38,23 +38,7 @@ function UpdateHelpFromLocalContentPath {
 
 function GetCurrentUserHelpRoot {
     # Try to get the actual configured PSContentPath
-    $contentPath = $null
-    try {
-        $contentPath = Get-PSContentPath -ErrorAction SilentlyContinue
-    } catch {
-        Write-Warning "PSContentPath is not available: $_"
-    }
-
-    # Fall back to default if not configured
-    if ([string]::IsNullOrEmpty($contentPath)) {
-        if ([System.Management.Automation.Platform]::IsWindows) {
-            $contentPath = Join-Path $HOME "Documents/PowerShell"
-        } else {
-            $userModulesRoot = [System.Management.Automation.Platform]::SelectProductNameForDirectory([System.Management.Automation.Platform+XDG_Type]::USER_MODULES)
-            $contentPath = Join-Path $userModulesRoot -ChildPath ".."
-        }
-    }
-
+    $contentPath = (Get-PSContentPath).FullName
     $userHelpRoot = Join-Path $contentPath "Help"
     return $userHelpRoot
 }

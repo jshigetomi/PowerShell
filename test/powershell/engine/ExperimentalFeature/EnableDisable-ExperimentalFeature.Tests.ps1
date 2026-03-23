@@ -8,13 +8,8 @@ Describe "Enable-ExperimentalFeature and Disable-ExperimentalFeature tests" -tag
     BeforeAll {
         $pwsh = "$PSHOME/pwsh"
         $systemConfigPath = "$PSHOME/powershell.config.json"
-        if ($IsWindows) {
-            # Config now defaults to LocalAppData instead of Documents
-            $userConfigPath = Join-Path $env:LOCALAPPDATA 'PowerShell' 'powershell.config.json'
-        }
-        else {
-            $userConfigPath = "~/.config/powershell/powershell.config.json"
-        }
+        # Derive the active user configuration file path from the engine
+        $userConfigPath = (Get-PSContentPath).ConfigFile
 
         $systemConfigExists = $false
         if (Test-Path $systemConfigPath) {

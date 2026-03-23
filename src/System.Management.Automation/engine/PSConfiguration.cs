@@ -190,7 +190,7 @@ namespace System.Management.Automation.Configuration
                 return contentPath;
             }
 
-            return Platform.DefaultPSContentDirectory;
+            return Platform.LegacyPSContentDirectory;
         }
 
         /// <summary>

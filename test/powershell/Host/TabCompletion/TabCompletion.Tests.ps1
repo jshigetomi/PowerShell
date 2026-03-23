@@ -3563,26 +3563,7 @@ dir -Recurse `
     Context "Tab completion help test" {
         BeforeAll {
             New-Item -ItemType File (Join-Path ${TESTDRIVE} "pwsh.xml")
-
-            # Try to get the actual configured PSContentPath
-            $contentPath = $null
-            try {
-                $contentPath = Get-PSContentPath -ErrorAction SilentlyContinue
-            } catch {
-                # Get-PSContentPath might not exist in older builds
-                Write-Warning "PSContentPath is not available: $_"
-            }
-
-            # Fall back to default if not configured
-            if ([string]::IsNullOrEmpty($contentPath)) {
-                if ($IsWindows) {
-                    $contentPath = Join-Path $HOME "Documents/PowerShell"
-                } else {
-                    $userModulesRoot = [System.Management.Automation.Platform]::SelectProductNameForDirectory([System.Management.Automation.Platform+XDG_Type]::USER_MODULES)
-                    $contentPath = Join-Path $userModulesRoot -ChildPath ".."
-                }
-            }
-
+            $contentPath = (Get-PSContentPath).FullName
             $userHelpRoot = Join-Path $contentPath "Help"
         }
 

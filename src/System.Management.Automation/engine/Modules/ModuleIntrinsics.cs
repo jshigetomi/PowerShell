@@ -975,7 +975,7 @@ namespace System.Management.Automation
         /// <returns>Legacy personal module path, or null if same as current personal path.</returns>
         internal static string GetLegacyPersonalModulePath()
         {
-            string legacyPath = Path.Combine(Platform.DefaultPSContentDirectory, "Modules");
+            string legacyPath = Path.Combine(Platform.LegacyPSContentDirectory, "Modules");
             string currentPath = GetPersonalModulePath();
 
             // Only return the legacy path if it's different from the current personal module path

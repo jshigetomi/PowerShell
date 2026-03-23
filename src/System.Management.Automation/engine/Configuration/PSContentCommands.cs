@@ -1,16 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Management.Automation;
-using System.Management.Automation.Configuration;
-using System.Management.Automation.Internal;
-using System.Management.Automation.Language;
-
 namespace Microsoft.PowerShell.Commands
 {
     /// <summary>
@@ -57,6 +47,7 @@ namespace Microsoft.PowerShell.Commands
     [Cmdlet(VerbsCommon.Set, "PSContentPath", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High, HelpUri = "https://go.microsoft.com/fwlink/?linkid=2344807")]
     public class SetPSContentPathCommand : PSCmdlet
     {
+        private const string RestartWarning = "Restart PowerShell for the content path change to take full effect on module paths, profiles, help files, and scripts.";
         /// <summary>
         /// Gets or sets the PSContentPath to configure.
         /// </summary>
@@ -104,6 +95,7 @@ namespace Microsoft.PowerShell.Commands
                     // Update the $PSUserContentPath readonly variable in the current session
                     UpdatePSUserContentPathVariable(expandedPath);
 
+                    WriteWarning(RestartWarning);
                     WriteVerbose($"Successfully set PSContentPath to '{Path}'");
                 }
                 catch (Exception ex)
@@ -122,7 +114,7 @@ namespace Microsoft.PowerShell.Commands
         /// </summary>
         private void ResetToDefault()
         {
-            string defaultPath = Platform.DefaultPSContentDirectory;
+            string defaultPath = Platform.LegacyPSContentDirectory;
             string currentPath = Utils.GetPSContentPath();
             string configFile = PowerShellConfig.Instance.GetConfigFilePath(ConfigScope.CurrentUser);
 
@@ -139,6 +131,7 @@ namespace Microsoft.PowerShell.Commands
                     // Update the variable to the platform default
                     UpdatePSUserContentPathVariable(defaultPath);
 
+                    WriteWarning(RestartWarning);
                     WriteVerbose($"Successfully reset PSContentPath to default: '{defaultPath}'");
                 }
                 catch (Exception ex)

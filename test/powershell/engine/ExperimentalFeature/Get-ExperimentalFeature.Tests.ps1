@@ -9,8 +9,8 @@ Describe "Get-ExperimentalFeature Tests" -tags "Feature","RequireAdminOnWindows"
         $pwsh = "$PSHOME/pwsh"
         $systemConfigPath = "$PSHOME/powershell.config.json"
         if ($IsWindows) {
-            # Config now defaults to LocalAppData instead of Documents
-            $userConfigPath = Join-Path $env:LOCALAPPDATA 'PowerShell' 'powershell.config.json'
+            # Derive the active user configuration file from the engine instead of hardcoding the path
+            $userConfigPath = (Get-PSContentPath).ConfigFile
         }
         else {
             $userConfigPath = "~/.config/powershell/powershell.config.json"

@@ -165,12 +165,13 @@ namespace System.Management.Automation
         // Gets the location for cache and config folders.
         internal static readonly string CacheDirectory = Platform.SelectProductNameForDirectory(Platform.XDG_Type.CACHE);
         internal static readonly string ConfigDirectory = Platform.SelectProductNameForDirectory(Platform.XDG_Type.CONFIG);
-        internal static readonly string DefaultPSContentDirectory = Platform.SelectProductNameForDirectory(Platform.XDG_Type.DATA);
+        internal static readonly string LegacyPSContentDirectory = Platform.SelectProductNameForDirectory(Platform.XDG_Type.DATA);
         internal static readonly string LocalAppDataPSContentDirectory = Platform.SelectProductNameForDirectory(Platform.XDG_Type.DATA);
 #else
         // Gets the location for cache and config folders.
-        // TODO: Future PR will change this to LocalAppData\PowerShell when we make that the default
-        internal static readonly string DefaultPSContentDirectory = SafeDeriveFromSpecialFolder(
+        // Legacy Documents\PowerShell path kept for backward compatibility (modules fallback).
+        // The preferred location is LocalAppData\PowerShell via LocalAppDataPSContentDirectory.
+        internal static readonly string LegacyPSContentDirectory = SafeDeriveFromSpecialFolder(
             Environment.SpecialFolder.Personal,
             @"PowerShell");
 
