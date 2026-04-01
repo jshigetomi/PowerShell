@@ -8,13 +8,8 @@ Describe "Get-ExperimentalFeature Tests" -tags "Feature","RequireAdminOnWindows"
     BeforeAll {
         $pwsh = "$PSHOME/pwsh"
         $systemConfigPath = "$PSHOME/powershell.config.json"
-        if ($IsWindows) {
-            # Derive the active user configuration file from the engine instead of hardcoding the path
-            $userConfigPath = (Get-PSContentPath).ConfigFile
-        }
-        else {
-            $userConfigPath = "~/.config/powershell/powershell.config.json"
-        }
+        # Derive the active user configuration file from the engine
+        $userConfigPath = (Get-PSContentPath).ConfigFile
 
         $systemConfigExists = $false
         if (Test-Path $systemConfigPath) {

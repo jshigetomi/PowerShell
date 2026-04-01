@@ -962,10 +962,11 @@ namespace System.Management.Automation
         /// <summary>
         /// Gets the personal module path.
         /// </summary>
-        /// <returns>Personal module path.</returns>
+        /// <returns>Personal module path, or null if the content path cannot be determined.</returns>
         internal static string GetPersonalModulePath()
         {
-            return Path.Combine(Utils.GetPSContentPath(), "Modules");
+            string contentPath = Utils.GetPSContentPath();
+            return string.IsNullOrEmpty(contentPath) ? null : Path.Combine(contentPath, "Modules");
         }
 
         /// <summary>
@@ -1360,15 +1361,21 @@ namespace System.Management.Automation
             }
 #endif
             string allUsersModulePath = PowerShellConfig.Instance.GetModulePath(ConfigScope.AllUsers);
-            string personalModulePath = PowerShellConfig.Instance.GetModulePath(ConfigScope.CurrentUser) ?? GetPersonalModulePath();
-            
-            // Include the legacy Documents module path for backwards compatibility with PowerShellGet
-            // This ensures both old (Documents) and new (PSContentPath) module locations are searched
-            string legacyModulePath = GetLegacyPersonalModulePath();
-            if (!string.IsNullOrEmpty(legacyModulePath))
+            string personalModulePath = PowerShellConfig.Instance.GetModulePath(ConfigScope.CurrentUser);
+
+            // If no user-configured module path, use the PSContentPath-based personal module path
+            // and include the legacy Documents module path for backwards compatibility with PowerShellGet.
+            // This ensures both old (Documents) and new (PSContentPath) module locations are searched.
+            if (string.IsNullOrEmpty(personalModulePath))
             {
-                // Combine personal path with legacy path (personal takes precedence)
-                personalModulePath = string.Concat(personalModulePath, Path.PathSeparator, legacyModulePath);
+                personalModulePath = GetPersonalModulePath();
+                string legacyModulePath = GetLegacyPersonalModulePath();
+
+                if (!string.IsNullOrEmpty(legacyModulePath) && !string.IsNullOrEmpty(personalModulePath))
+                {
+                    // Combine personal path with legacy path (personal takes precedence)
+                    personalModulePath = string.Concat(personalModulePath, Path.PathSeparator, legacyModulePath);
+                }
             }
 
             string newModulePathString = GetModulePath(currentModulePath, allUsersModulePath, personalModulePath);

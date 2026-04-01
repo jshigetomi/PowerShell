@@ -178,6 +178,10 @@ namespace System.Management.Automation.Configuration
         /// Gets the PSContentPath from the configuration file.
         /// If not configured, returns the default platform content directory.
         /// </summary>
+        /// <remarks>
+        /// Currently falls back to Documents\PowerShell (LegacyPSContentDirectory) for backward compatibility.
+        /// In a future release, the default will change to LocalAppData\PowerShell.
+        /// </remarks>
         /// <returns>The configured PSContentPath if found, otherwise the default platform content directory (never null).</returns>
         internal string GetPSContentPath()
         {
@@ -194,11 +198,23 @@ namespace System.Management.Automation.Configuration
         }
 
         /// <summary>
+        /// Tracks whether PSContentPath telemetry has already been sent in this process.
+        /// </summary>
+        private static bool s_psContentPathTelemetrySent;
+
+        /// <summary>
         /// Sends telemetry indicating PSContentPath customization is in use.
-        /// Only sends a flag - never actual paths.
+        /// Only sends a flag - never actual paths. Only fires once per process.
         /// </summary>
         private static void SendPSContentPathTelemetry(string name)
         {
+            if (s_psContentPathTelemetrySent)
+            {
+                return;
+            }
+
+            s_psContentPathTelemetrySent = true;
+
             try
             {
                 Microsoft.PowerShell.Telemetry.ApplicationInsightsTelemetry.SendTelemetryMetric(

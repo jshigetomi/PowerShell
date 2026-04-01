@@ -135,4 +135,85 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
             Test-Path $configPath | Should -Be $false
         }
     }
+
+    Context "Set-PSContentPath -Default" {
+        It "Set-PSContentPath -Default resets config to platform default" {
+            # First set a custom path
+            $customPath = if ($IsWindows) { "$env:TEMP\CustomPowerShell" } else { "/tmp/CustomPowerShell" }
+            Set-PSContentPath -Path $customPath -WarningAction SilentlyContinue -Confirm:$false
+
+            # Verify it was set
+            Test-Path $configPath | Should -Be $true
+            $config = Get-Content $configPath -Raw | ConvertFrom-Json
+            $config.PSUserContentPath | Should -Be $customPath
+
+            # Reset to default
+            Set-PSContentPath -Default -WarningAction SilentlyContinue -Confirm:$false
+
+            # Verify the custom key was removed from config
+            if (Test-Path $configPath) {
+                $config = Get-Content $configPath -Raw | ConvertFrom-Json
+                $config.PSObject.Properties['PSUserContentPath'] | Should -BeNullOrEmpty
+            }
+        }
+    }
+
+    Context "`$PSUserContentPath automatic variable" {
+        It "`$PSUserContentPath should be a non-null string" {
+            $PSUserContentPath | Should -Not -BeNullOrEmpty
+            $PSUserContentPath | Should -BeOfType [string]
+        }
+
+        It "`$PSUserContentPath should match Get-PSContentPath output" {
+            $cmdletResult = (Get-PSContentPath).FullName
+            $PSUserContentPath | Should -Be $cmdletResult
+        }
+
+        It "Assigning to `$PSUserContentPath should throw a helpful error" {
+            $err = $null
+            try {
+                $PSUserContentPath = "D:\SomePath"
+            }
+            catch {
+                $err = $_
+            }
+
+            $err | Should -Not -BeNullOrEmpty
+            $err.Exception.Message | Should -BeLike '*Set-PSContentPath*'
+        }
+
+        It "`$PSUserContentPath cannot be removed with Remove-Variable" {
+            { Remove-Variable -Name PSUserContentPath -Scope Global -ErrorAction Stop } | Should -Throw
+        }
+    }
+
+    Context "Legacy module path backward compatibility" {
+        It "PSModulePath includes legacy Documents path when PSContentPath differs" {
+            # Get current module path entries
+            $modulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator
+
+            # Get the current personal module path (PSContentPath-based)
+            $contentPath = (Get-PSContentPath).FullName
+            $personalModulePath = Join-Path $contentPath "Modules"
+
+            if ($IsWindows) {
+                $legacyPath = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell' 'Modules'
+
+                # If legacy and personal are different, both should be in PSModulePath
+                if ($personalModulePath -ne $legacyPath) {
+                    $modulePaths | Should -Contain $personalModulePath
+                    $modulePaths | Should -Contain $legacyPath
+                }
+            }
+
+            # Personal module path should always be in PSModulePath
+            $modulePaths | Should -Contain $personalModulePath
+        }
+
+        It "PSModulePath should not contain duplicate entries" {
+            $modulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator
+            $uniquePaths = $modulePaths | Select-Object -Unique
+            $modulePaths.Count | Should -Be $uniquePaths.Count
+        }
+    }
 }

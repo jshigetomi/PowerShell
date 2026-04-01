@@ -118,6 +118,10 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Resets the PSContentPath to the platform default by clearing the custom config.
         /// </summary>
+        /// <remarks>
+        /// Currently resets to Documents\PowerShell (LegacyPSContentDirectory) for backward compatibility.
+        /// In a future release, this will change to LocalAppData\PowerShell as the default content directory.
+        /// </remarks>
         private void ResetToDefault()
         {
             string defaultPath = Platform.LegacyPSContentDirectory;
