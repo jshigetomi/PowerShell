@@ -14,7 +14,7 @@ namespace System.Management.Automation
         /// </summary>
         /// <param name="initialValue">The initial value for the variable.</param>
         internal PSUserContentPathVariable(string initialValue)
-            : base(SpecialVariables.PSUserContentPath, true, ScopedItemOptions.ReadOnly | ScopedItemOptions.AllScope,
+            : base(SpecialVariables.PSUserContentPath, true, ScopedItemOptions.AllScope,
                    RunspaceInit.PSUserContentPathDescription)
         {
             _value = initialValue;

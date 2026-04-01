@@ -211,8 +211,10 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
         }
 
         It "PSModulePath should not contain duplicate entries" {
-            $modulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator
-            $uniquePaths = $modulePaths | Select-Object -Unique
+            $modulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                ForEach-Object { $_.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) }
+            $uniquePaths = $modulePaths | Sort-Object -Unique
             $modulePaths.Count | Should -Be $uniquePaths.Count
         }
     }
