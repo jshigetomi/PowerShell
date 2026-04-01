@@ -40,7 +40,7 @@ The centralized API `Utils.GetPSContentPath()` resolves paths in this order:
    - **Windows**: `Documents\PowerShell` (to avoid breaking existing profiles/help)
    - **Unix/macOS**: `~/.local/share/powershell`
 
-> **Note:** `$env:PSUserContentPath` is NOT a resolution source. It is an **output** — the environment variable is updated when the PSContentPath changes (e.g., via `Set-PSContentPath`) so child processes inherit it.
+> **Note:** `$env:PSUserContentPath` is NOT a resolution source. It is an **output** ΓÇö the environment variable is updated when the PSContentPath changes (e.g., via `Set-PSContentPath`) so child processes inherit it.
 >
 > **Future plan:** The default on Windows will change to `$env:LOCALAPPDATA\PowerShell` in a future release once a proper migration story is in place. Changing the default now would break users whose profiles and help files are in `Documents\PowerShell`.
 
@@ -51,7 +51,7 @@ Changing the default from `Documents\PowerShell` to `LocalAppData\PowerShell` (o
 | Content Type | Path | Impact |
 |-------------|------|--------|
 | **Modules** | `{PSContentPath}\Modules` | Primary module install location. Legacy `Documents\PowerShell\Modules` is kept in `$env:PSModulePath` as a fallback so existing PowerShellGet-installed modules continue to work. |
-| **Profiles** | `{PSContentPath}\profile.ps1` | User profiles move to the new location. Existing profiles in Documents will NOT be loaded automatically — users need to migrate or create new ones. |
+| **Profiles** | `{PSContentPath}\profile.ps1` | User profiles move to the new location. Existing profiles in Documents will NOT be loaded automatically ΓÇö users need to migrate or create new ones. |
 | **Help** | `{PSContentPath}\Help` | Updatable help files stored per-user move to the new location. |
 | **Scripts** | `{PSContentPath}\Scripts` | PSResourceGet script install location. |
 
@@ -59,8 +59,8 @@ Changing the default from `Documents\PowerShell` to `LocalAppData\PowerShell` (o
 
 | Variable | Description |
 |----------|-------------|
-| `Platform.DefaultPSContentDirectory` | Current default (Documents\PowerShell on Windows) — used to avoid breaking existing setups |
-| `Platform.LocalAppDataPSContentDirectory` | Future default location (LocalAppData\PowerShell on Windows) — users can opt in via `Set-PSContentPath` |
+| `Platform.LegacyPSContentDirectory` | Legacy content directory (Documents\PowerShell on Windows) ΓÇö kept as fallback for backward compatibility |
+| `Platform.LocalAppDataPSContentDirectory` | Future default location (LocalAppData\PowerShell on Windows) ΓÇö users can opt in via `Set-PSContentPath` |
 | `$env:PSUserContentPath` | Environment variable **set** (not read) when PSContentPath changes, for child process inheritance |
 
 ### Cmdlet Summary
@@ -68,7 +68,7 @@ Changing the default from `Documents\PowerShell` to `LocalAppData\PowerShell` (o
 | Cmdlet | Purpose | Key Parameters |
 |--------|---------|----------------|
 | `Get-PSContentPath` | Get current content path | Returns `DirectoryInfo` with `ConfigFile` NoteProperty |
-| `Set-PSContentPath` | Configure custom path | `-Path` (single absolute path), `-Default` (reset), `ConfirmImpact=High` |
+| `Set-PSContentPath` | Configure custom path | `-Path` (single absolute path), `-Default` (reset), `ConfirmImpact=High`. Emits a warning that a restart is required. |
 
 ---
 
@@ -77,10 +77,10 @@ Changing the default from `Documents\PowerShell` to `LocalAppData\PowerShell` (o
 ### 1. Always Use the Centralized API
 
 ```csharp
-// ✅ CORRECT: Use centralized API
+// Γ£à CORRECT: Use centralized API
 string contentPath = Utils.GetPSContentPath();
 
-// ❌ WRONG: Don't hardcode paths
+// Γ¥î WRONG: Don't hardcode paths
 string contentPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PowerShell");
 ```
 
@@ -96,12 +96,12 @@ Follow existing PowerShell cmdlet patterns:
 Implement robust error handling with recovery guidance:
 
 ```csharp
-// ✅ CORRECT: Separate phases with clear error handling
+// Γ£à CORRECT: Separate phases with clear error handling
 // Phase 1: Copy (fail fast if this fails)
 // Phase 2: Delete source (collect errors, don't fail fast)
 // Phase 3: Update config (only if previous phases succeeded)
 
-// ❌ WRONG: Update config before operations complete
+// Γ¥î WRONG: Update config before operations complete
 PowerShellConfig.Instance.SetPSContentPath(destinationPath);
 // ... then do file operations that might fail
 ```
@@ -123,13 +123,13 @@ The old Documents path must continue to work for **modules**:
 Use direct C# file operations instead of invoking PowerShell cmdlets:
 
 ```csharp
-// ✅ CORRECT: Direct C# operations
+// Γ£à CORRECT: Direct C# operations
 foreach (var file in Directory.GetFiles(sourcePath))
 {
     File.Copy(file, Path.Combine(destPath, Path.GetFileName(file)), overwrite: true);
 }
 
-// ❌ AVOID: ScriptBlock invocation (fragile, harder to debug)
+// Γ¥î AVOID: ScriptBlock invocation (fragile, harder to debug)
 var copyCmd = InvokeCommand.NewScriptBlock(@"Copy-Item ...");
 copyCmd.InvokeWithContext(...);
 ```
@@ -189,7 +189,7 @@ When reviewing PSContentPath-related changes:
 |------|---------|
 | `src/System.Management.Automation/engine/Configuration/PSContentCommands.cs` | Cmdlet implementations (`Get-PSContentPath`, `Set-PSContentPath`) |
 | `src/System.Management.Automation/engine/Utils.cs` | `GetPSContentPath()` centralized API |
-| `src/System.Management.Automation/CoreCLR/CorePsPlatform.cs` | Platform-specific path defaults (`DefaultPSContentDirectory`, `LocalAppDataPSContentDirectory`) |
+| `src/System.Management.Automation/CoreCLR/CorePsPlatform.cs` | Platform-specific path defaults (`LegacyPSContentDirectory`, `LocalAppDataPSContentDirectory`) |
 | `src/System.Management.Automation/engine/PSConfiguration.cs` | `PowerShellConfig` - config file read/write for PSContentPath |
 | `src/System.Management.Automation/engine/Modules/ModuleIntrinsics.cs` | `GetPersonalModulePath()`, `GetLegacyPersonalModulePath()`, module path assembly |
 | `src/System.Management.Automation/engine/hostifaces/HostUtilities.cs` | Profile path resolution using PSContentPath |

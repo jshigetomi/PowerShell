@@ -72,29 +72,29 @@ Reference the instruction files:
 
 Provide a structured review with:
 
-### 📋 PR Summary
+### ≡ƒôï PR Summary
 - **Title:** {PR title}
 - **Author:** {author}
 - **Type:** Bug Fix | Feature | Refactor | Documentation | Tests | Build/CI
 - **Files Changed:** {count}
 - **Target Branch:** {branch}
 
-### 🔍 Key Changes
+### ≡ƒöì Key Changes
 Bullet list of the main changes, organized by area:
 - **Area 1:** Description of changes
 - **Area 2:** Description of changes
 
-### 📊 Impact Assessment
+### ≡ƒôè Impact Assessment
 - **Breaking Changes:** Yes/No (explain if yes)
 - **Backward Compatibility:** Maintained/At Risk
 - **Test Coverage:** Adequate/Needs Tests
 - **Documentation:** Updated/Needs Update
 
-### ✅ Review Decision
+### Γ£à Review Decision
 
 Provide ONE of the following:
 
-#### 🟢 **APPROVAL**
+#### ≡ƒƒó **APPROVAL**
 Use when:
 - Changes are correct and complete
 - Tests are adequate
@@ -106,7 +106,7 @@ Use when:
 **Reasoning:** [Brief explanation of why this PR is ready to merge]
 ```
 
-#### 🟡 **SUGGESTED IMPROVEMENT**
+#### ≡ƒƒí **SUGGESTED IMPROVEMENT**
 Use when:
 - PR is mostly good but could be better
 - Minor issues that don't block merge
@@ -121,7 +121,7 @@ Use when:
 **Note:** These are optional improvements; the PR can merge as-is.
 ```
 
-#### 🔴 **QUESTION TO AUTHOR**
+#### ≡ƒö┤ **QUESTION TO AUTHOR**
 Use when:
 - Clarification is needed before approval
 - Design decisions need explanation
