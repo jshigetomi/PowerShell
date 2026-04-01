@@ -1,7 +1,7 @@
 ---
 description: "Orchestrates multi-agent PR review. Given a PR number, fetches metadata, dispatches to specialist agents (code review, branch strategy, test coverage, pipeline), synthesizes findings, and presents proposals for you to accept or reject. Tracks your decisions to improve agent accuracy over time."
-tools: [vscode/memory, vscode/resolveMemoryFileUri, read, agent, search, web, todo]
-agents: ['CodeReviewSpecialist', 'BranchStrategySpecialist', 'TestCoverageSpecialist', 'PipelineReviewSpecialist']
+tools: [vscode/memory, vscode/resolveMemoryFileUri, read, edit, agent, search, web, todo]
+agents: ['CodeReviewSpecialist', 'BranchStrategySpecialist', 'TestCoverageSpecialist', 'PipelineReviewSpecialist', 'PRFixImplementer']
 ---
 
 # PR Review Orchestrator
@@ -103,6 +103,25 @@ Present the unified review to the user in this format:
 **What would you like to do?**
 - Tell me which suggestions you accept, reject, or want modified
 - Ask me to elaborate on any finding
+- **If this is your PR:** Tell me which findings to fix and I'll implement them directly
+
+---
+
+### Phase 4b: Implement Fixes (own PRs only)
+
+When the user indicates this is their own PR and selects findings to fix:
+
+1. Confirm the user has the PR branch checked out locally (check via `git branch --show-current` or ask)
+2. Gather the accepted findings into a structured list with:
+   - File path and line number
+   - Description of the issue
+   - Concrete suggested fix
+3. Dispatch to **PRFixImplementer** agent with the accepted findings
+4. PRFixImplementer reads the source files and applies the changes
+5. Report back the summary of changes made
+6. The user reviews the changes, commits, and pushes themselves
+
+**Important:** Only invoke PRFixImplementer when the user explicitly says this is their PR and asks for fixes to be applied. Never apply fixes to PRs authored by others.
 - Ask me to regenerate with different focus
 
 ---
