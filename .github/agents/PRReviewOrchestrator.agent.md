@@ -1,6 +1,6 @@
 ---
 description: "Orchestrates multi-agent PR review. Given a PR number, fetches metadata, dispatches to specialist agents (code review, branch strategy, test coverage, pipeline), synthesizes findings, and presents proposals for you to accept or reject. Tracks your decisions to improve agent accuracy over time."
-tools: ['read', 'search', 'web', 'agent', 'todo']
+tools: [vscode/memory, vscode/resolveMemoryFileUri, read, agent, search, web, todo]
 agents: ['CodeReviewSpecialist', 'BranchStrategySpecialist', 'TestCoverageSpecialist', 'PipelineReviewSpecialist']
 ---
 
