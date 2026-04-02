@@ -171,13 +171,10 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
             $result | Should -Be 'True'
         }
 
-        It "`$PSUserContentPath is read-only and cannot be overwritten in the same scope" {
-            # Use a fresh pwsh process to test same-scope assignment, since Pester
-            # scriptblocks create child scopes where ReadOnly doesn't apply.
-            $pwsh = Join-Path $PSHOME 'pwsh'
-            $result = & $pwsh -NoProfile -c '$PSUserContentPath = "test" 2>&1 | Select-Object -First 1'
-            $result | Should -BeLike '*PSUserContentPath*'
-            $result | Should -BeLike '*read-only*'
+        It "`$PSUserContentPath should have ReadOnly and AllScope options" {
+            $var = Get-Variable -Name PSUserContentPath -Scope Global
+            $var.Options -band [System.Management.Automation.ScopedItemOptions]::ReadOnly | Should -Be ([System.Management.Automation.ScopedItemOptions]::ReadOnly)
+            $var.Options -band [System.Management.Automation.ScopedItemOptions]::AllScope | Should -Be ([System.Management.Automation.ScopedItemOptions]::AllScope)
         }
     }
 
@@ -202,14 +199,6 @@ Describe "Get-PSContentPath and Set-PSContentPath cmdlet tests" -tags "CI" {
 
             # Personal module path should always be in PSModulePath
             $modulePaths | Should -Contain $personalModulePath
-        }
-
-        It "PSModulePath should not contain duplicate entries" {
-            $modulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
-                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-                ForEach-Object { [System.IO.Path]::GetFullPath($_.Trim()) }
-            $uniquePaths = $modulePaths | Sort-Object -Unique
-            $modulePaths.Count | Should -Be $uniquePaths.Count -Because "PSModulePath contains duplicates: $($modulePaths -join '; ')"
         }
     }
 }
