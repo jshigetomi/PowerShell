@@ -14,7 +14,7 @@ namespace System.Management.Automation
         /// </summary>
         /// <param name="initialValue">The initial value for the variable.</param>
         internal PSUserContentPathVariable(string initialValue)
-            : base(SpecialVariables.PSUserContentPath, true, ScopedItemOptions.AllScope,
+            : base(SpecialVariables.PSUserContentPath, true, ScopedItemOptions.ReadOnly | ScopedItemOptions.AllScope,
                    RunspaceInit.PSUserContentPathDescription)
         {
             _value = initialValue;
@@ -23,8 +23,7 @@ namespace System.Management.Automation
         private string _value;
 
         /// <summary>
-        /// Gets or sets the value of the variable.
-        /// Throws a custom error message directing users to use Set-PSContentPath.
+        /// Gets the value of the variable.
         /// </summary>
         public override object Value
         {
@@ -32,19 +31,6 @@ namespace System.Management.Automation
             {
                 DebuggerCheckVariableRead();
                 return _value;
-            }
-
-            set
-            {
-                // Throw a custom error message directing users to use Set-PSContentPath
-                SessionStateUnauthorizedAccessException e =
-                    new SessionStateUnauthorizedAccessException(
-                            Name,
-                            SessionStateCategory.Variable,
-                            "VariableNotWritableUseSetPSContentPath",
-                            SessionStateStrings.VariableNotWritableUseSetPSContentPath);
-
-                throw e;
             }
         }
 
