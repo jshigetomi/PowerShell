@@ -1,7 +1,7 @@
 ---
 description: "Orchestrates multi-agent PR review. Given a PR number, fetches metadata, dispatches to specialist agents (code review, branch strategy, test coverage, pipeline), synthesizes findings, and presents proposals for you to accept or reject. Tracks your decisions to improve agent accuracy over time."
 tools: [vscode/memory, vscode/resolveMemoryFileUri, read, edit, agent, search, web, todo]
-agents: ['CodeReviewSpecialist', 'BranchStrategySpecialist', 'TestCoverageSpecialist', 'PipelineReviewSpecialist', 'PRFixImplementer']
+agents: ['CodeReviewSpecialist', 'BranchStrategySpecialist', 'TestCoverageSpecialist', 'PipelineReviewSpecialist', 'PRFixImplementer', 'LocalTestRunner']
 ---
 
 # PR Review Orchestrator
@@ -107,7 +107,7 @@ Present the unified review to the user in this format:
 
 ---
 
-### Phase 4b: Implement Fixes (own PRs only)
+### Phase 4b: Implement & Verify Fixes (own PRs only)
 
 When the user indicates this is their own PR and selects findings to fix:
 
@@ -117,9 +117,10 @@ When the user indicates this is their own PR and selects findings to fix:
    - Description of the issue
    - Concrete suggested fix
 3. Dispatch to **PRFixImplementer** agent with the accepted findings
-4. PRFixImplementer reads the source files and applies the changes
-5. Report back the summary of changes made
-6. The user reviews the changes, commits, and pushes themselves
+4. PRFixImplementer applies the code changes, then dispatches to **LocalTestRunner** to build and run relevant tests
+5. If tests **pass**: Report the summary of changes made. The user reviews, commits, and pushes.
+6. If tests **fail**: Analyze the failures, dispatch back to **PRFixImplementer** with the test errors as new findings to fix. Repeat until tests pass or **3 iterations** are reached.
+7. If the loop hits 3 iterations without passing, present the remaining failures to the user and ask how to proceed.
 
 **Important:** Only invoke PRFixImplementer when the user explicitly says this is their PR and asks for fixes to be applied. Never apply fixes to PRs authored by others.
 - Ask me to regenerate with different focus
