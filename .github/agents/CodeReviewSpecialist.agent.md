@@ -25,7 +25,12 @@ Analyze code diffs from a Pull Request and identify bugs, security vulnerabiliti
    - **Security**: Injection vulnerabilities, credential exposure, unsafe deserialization, OWASP Top 10
    - **Performance**: Unnecessary allocations, N+1 patterns, blocking calls in async paths
    - **Conventions**: Naming (reference `.github/instructions/powershell-parameter-naming.instructions.md`), style, idiomatic patterns
-3. Cross-reference with existing codebase to check consistency with similar patterns
+3. **Validate every suggestion against the codebase status quo** (MANDATORY):
+   - Before recommending a pattern (e.g., null-coalescing, error handling, naming), **search the codebase** for how the same API/pattern is used in existing code
+   - If the codebase consistently does NOT use the pattern you're about to suggest, do NOT suggest it — the PR is following established convention
+   - If the codebase is inconsistent, note both patterns and let the reviewer decide
+   - Use `grep_search` or `semantic_search` to verify — do not rely on general .NET/C# best practices alone
+   - Example: if suggesting `Environment.ProcessPath ?? string.Empty`, first search for existing `Environment.ProcessPath` usages to see if any use null-coalescing
 4. Classify each finding by severity: **Critical**, **High**, **Medium**, **Low**
 
 ## Output Format
