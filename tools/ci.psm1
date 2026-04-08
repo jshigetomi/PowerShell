@@ -241,7 +241,7 @@ function Install-CIPester
     Write-Verbose "Checking for Pester module (required: $MinimumVersion - $MaximumVersion)" -Verbose
 
     # Check if a compatible version of Pester is already installed
-    $installedPester = Get-Module -Name Pester -ListAvailable | 
+    $installedPester = Get-Module -Name Pester -ListAvailable |
         Where-Object { $_.Version -ge $MinimumVersion -and $_.Version -le $MaximumVersion } |
         Sort-Object -Property Version -Descending |
         Select-Object -First 1
@@ -620,11 +620,11 @@ function Invoke-CIFinish
             switch -regex ($Runtime){
                 default {
                     $runPackageTest = $true
-                    $packageTypes = 'msi', 'zip', 'zip-pdb', 'msix'
+                    $packageTypes = 'zip', 'zip-pdb', 'msix'
                 }
                 'win-arm.*' {
                     $runPackageTest = $false
-                    $packageTypes = 'msi', 'zip', 'zip-pdb', 'msix'
+                    $packageTypes = 'zip', 'zip-pdb', 'msix'
                 }
             }
 
@@ -932,12 +932,12 @@ function New-LinuxPackage
         } else {
             "${env:BUILD_ARTIFACTSTAGINGDIRECTORY}"
         }
-        
+
         # Ensure artifacts directory exists
         if (-not (Test-Path $artifactsDir)) {
             New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
         }
-        
+
         Write-Log -message "Artifacts directory: $artifactsDir"
         Copy-Item $packageObj.FullName -Destination $artifactsDir -Force
     }
@@ -950,7 +950,7 @@ function New-LinuxPackage
         } else {
             "${env:BUILD_ARTIFACTSTAGINGDIRECTORY}"
         }
-        
+
         # Create and package Raspbian .tgz
         # Build must be clean for Raspbian
         Start-PSBuild -PSModuleRestore -Clean -Runtime linux-arm -Configuration 'Release'
@@ -1062,13 +1062,13 @@ Function Test-MergeConflictMarker
             [string]$OutputPath,
             [string]$SummaryPath
         )
-        
+
         # Output results to GitHub Actions
         if ($OutputPath) {
             "files-checked=0" | Out-File -FilePath $OutputPath -Append -Encoding utf8
             "conflicts-found=0" | Out-File -FilePath $OutputPath -Append -Encoding utf8
         }
-        
+
         # Create GitHub Actions job summary
         if ($SummaryPath) {
             $summaryContent = @"
@@ -1097,11 +1097,11 @@ $Message
     # Filter out *.cs files from merge conflict checking
     $filesToCheck = @($File | Where-Object { $_ -notlike "*.cs" })
     $filteredCount = $File.Count - $filesToCheck.Count
-    
+
     if ($filteredCount -gt 0) {
         Write-Host "Filtered out $filteredCount *.cs file(s) from merge conflict checking" -ForegroundColor Yellow
     }
-    
+
     if ($filesToCheck.Count -eq 0) {
         Write-Host "No files to check after filtering (all files were *.cs)" -ForegroundColor Yellow
         Write-NoFilesOutput -Message "All $filteredCount file(s) were filtered out (*.cs files are excluded from merge conflict checking)." -OutputPath $OutputPath -SummaryPath $SummaryPath
@@ -1135,14 +1135,14 @@ $Message
         }
 
         $filesChecked++
-        
+
         # Get relative path for display
         $relativePath = if ($WorkspacePath -and $filePath.StartsWith($WorkspacePath)) {
             $filePath.Substring($WorkspacePath.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
         } else {
             $filePath
         }
-        
+
         Write-Host "  Checking: $relativePath" -ForegroundColor Gray
 
         # Search for conflict markers using Select-String
