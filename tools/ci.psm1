@@ -616,20 +616,9 @@ function Invoke-CIFinish
             Restore-PSOptions -PSOptionsPath "${buildFolder}/psoptions.json"
             $preReleaseVersion = $env:CI_FINISH_RELASETAG
 
-            # Build packages	            $preReleaseVersion = "$previewPrefix-$previewLabel.$prereleaseIteration"
-            switch -regex ($Runtime){
-                default {
-                    $runPackageTest = $true
-                    $packageTypes = 'zip', 'zip-pdb', 'msix'
-                }
-                'win-arm.*' {
-                    $runPackageTest = $false
-                    $packageTypes = 'zip', 'zip-pdb', 'msix'
-                }
-            }
+            # Build packages
+            $packageTypes = 'zip', 'zip-pdb', 'msix'
 
-            Import-Module "$PSScriptRoot\wix\wix.psm1"
-            Install-Wix -arm64:$true
             $packages = Start-PSPackage -Type $packageTypes -ReleaseTag $preReleaseVersion -SkipReleaseChecks -WindowsRuntime $Runtime
 
             foreach ($package in $packages) {
@@ -641,40 +630,9 @@ function Invoke-CIFinish
 
                 if ($package -is [string]) {
                     $null = $artifacts.Add($package)
-                } elseif ($package -is [pscustomobject] -and $package.psobject.Properties['msi']) {
-                    $null = $artifacts.Add($package.msi)
-                    $null = $artifacts.Add($package.wixpdb)
                 }
             }
 
-            if ($runPackageTest) {
-                # the packaging tests find the MSI package using env:PSMsiX64Path
-                $env:PSMsiX64Path = $artifacts | Where-Object { $_.EndsWith(".msi")}
-                $architechture = $Runtime.Split('-')[1]
-                $exePath = New-ExePackage -ProductVersion ($preReleaseVersion -replace '^v') -ProductTargetArchitecture $architechture -MsiLocationPath $env:PSMsiX64Path
-                Write-Verbose "exe Path: $exePath" -Verbose
-                $artifacts.Add($exePath)
-                $env:PSExePath = $exePath
-                $env:PSMsiChannel = $Channel
-                $env:PSMsiRuntime = $Runtime
-
-                # Install the latest Pester and import it
-                $maximumPesterVersion = '4.99'
-                Install-CIPester -MinimumVersion '4.0.0' -MaximumVersion $maximumPesterVersion -Force
-                Import-Module Pester -Force -MaximumVersion $maximumPesterVersion
-
-                $testResultPath = Join-Path -Path $env:TEMP -ChildPath "win-package-$channel-$runtime.xml"
-
-                # start the packaging tests and get the results
-                $packagingTestResult = Invoke-Pester -Script (Join-Path $repoRoot '.\test\packaging\windows\') -PassThru -OutputFormat NUnitXml -OutputFile $testResultPath
-
-                Publish-TestResults -Title "win-package-$channel-$runtime" -Path $testResultPath
-
-                # fail the CI job if the tests failed, or nothing passed
-                if (-not $packagingTestResult -is [pscustomobject] -or $packagingTestResult.FailedCount -ne 0 -or $packagingTestResult.PassedCount -eq 0) {
-                    throw "Packaging tests failed ($($packagingTestResult.FailedCount) failed/$($packagingTestResult.PassedCount) passed)"
-                }
-            }
         }
     } catch {
         Get-Error -InputObject $_

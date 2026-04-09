@@ -13,7 +13,6 @@
         'Invoke-AzDevOpsLinuxPackageBuild'
         'Invoke-AzDevOpsLinuxPackageCreation'
         'New-DotnetSdkContainerFxdPackage'
-        'New-ExePackage'
         'Start-PrepForGlobalToolNupkg'
         'New-GlobalToolNupkgSource'
         'New-GlobalToolNupkgFromSource'
