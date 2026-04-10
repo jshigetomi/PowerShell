@@ -3907,6 +3907,7 @@ function New-MSIXPackage
         Write-Verbose "Creating msix package" -Verbose
         Start-NativeExecution -VerboseOutputOnError { & $makeappx pack /o /v /h SHA256 /d $ProductSourcePath /p (Join-Path -Path $CurrentLocation -ChildPath "$packageName.msix") }
         Write-Verbose "Created $packageName.msix" -Verbose
+        Join-Path -Path $CurrentLocation -ChildPath "$packageName.msix"
     }
 }
 

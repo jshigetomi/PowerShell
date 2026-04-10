@@ -265,7 +265,7 @@ Please see PowerShell [Testing Guidelines - Running Tests Outside of CI][running
   [run the spell checker command-line tool in interactive mode](#spell-checking-documentation)
   to add words to the `.spelling` file.
 
-  You could update the file manually in accordance with messages in the test log file. Or you can use automatically generated file. To get the file you should build the zip package locally:
+  You could update the `.spelling` file manually in accordance with messages in the test log file. Or you can use the automatically generated `.spelling` file from a local build. To get the file, build a zip package locally:
 
   ```powershell
   Import-Module .\build.psm1

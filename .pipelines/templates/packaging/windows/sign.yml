@@ -67,18 +67,13 @@ jobs:
 
   - template: /.pipelines/templates/install-dotnet.yml@self
 
-  # Import build.psm1 and bootstrap packaging dependencies (WiX Toolset)
+  # Import build.psm1 and bootstrap packaging dependencies
   - pwsh: |
       $repoRoot = "$env:REPOROOT"
       Import-Module "$repoRoot\build.psm1"
       Import-Module "$repoRoot\tools\packaging"
       Write-Verbose -Verbose "Modules imported successfully"
-
-      # Install WiX Toolset for EXE package creation
-      $isArm64 = '$(Runtime)' -eq 'arm64'
-      $env:RUNTIME = '$(Runtime)'
-      Start-PSBootstrap -Scenario Package
-    displayName: 'Import modules and install WiX Toolset'
+    displayName: 'Import modules'
     env:
       ob_restore_phase: true
 
@@ -88,9 +83,9 @@ jobs:
       Write-Verbose -Verbose "runtime = '$(Runtime)'"
 
       $packageTypes = switch ($runtime) {
-        'x64' { @('zip', 'msix', 'exe') }
-        'x86' { @('zip', 'msix', 'exe') }
-        'arm64' { @('zip', 'msix', 'exe') }
+        'x64' { @('zip', 'msix') }
+        'x86' { @('zip', 'msix') }
+        'arm64' { @('zip', 'msix') }
         'fxdependent' { 'fxdependent' }
         'fxdependentWinDesktop' { 'fxdependent-win-desktop' }
         'minsize' { 'min-size' }
@@ -98,13 +93,6 @@ jobs:
 
       if (-not (Test-Path $(ob_outputDirectory))) {
         New-Item -ItemType Directory -Path $(ob_outputDirectory) -Force
-      }
-
-      if ($packageTypes -contains 'exe') {
-        $exePkgNameFilter = "powershell-*.exe"
-        $exePkgPath = Get-ChildItem -Path $(Pipeline.Workspace) -Filter $exePkgNameFilter -Recurse -File | Select-Object -ExpandProperty FullName
-        Write-Verbose -Verbose "signed exePkgPath: $exePkgPath"
-        Copy-Item -Path $exePkgPath -Destination '$(ob_outputDirectory)' -Force -Verbose
       }
 
       if ($packageTypes -contains 'zip' -or $packageTypes -contains 'fxdependent' -or $packageTypes -contains 'min-size' -or $packageTypes -contains 'fxdependent-win-desktop') {

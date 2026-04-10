@@ -7,8 +7,6 @@
     PowerShellVersion = "5.0"
     CmdletsToExport   = @()
     FunctionsToExport = @(
-        'Compress-ExePackageEngine'
-        'Expand-ExePackageEngine'
         'Expand-PSSignedBuild'
         'Invoke-AzDevOpsLinuxPackageBuild'
         'Invoke-AzDevOpsLinuxPackageCreation'
