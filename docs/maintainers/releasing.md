@@ -57,7 +57,8 @@ It **requires** that PowerShell Core has been built via `Start-PSBuild` from the
 
 #### Windows
 
-`Start-PSPackage` creates zip and MSIX packages for Windows.
+`Start-PSPackage` supports creating ZIP and MSIX packages for Windows.
+When called without `-Type` on Windows, it defaults to creating both ZIP and MSIX packages.
 The packages *must* be published in release mode,
 so make sure `-Configuration Release` is specified when running `Start-PSBuild`.
 
