@@ -224,7 +224,7 @@ B1,B2
     Context 'Header Only Scenarios' {
         It 'Should handle header only without newline' {
             $result = 'P1,P2' | ConvertFrom-Csv
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle header with one empty newline' {
@@ -232,7 +232,7 @@ B1,B2
 P1,P2
 
 '@ | ConvertFrom-Csv
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle header followed by multiple empty lines' {
@@ -242,21 +242,21 @@ P1,P2
 
 
 '@ | ConvertFrom-Csv
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
     }
 
     Context 'Empty Input with -Header Parameter' {
         It 'Should handle empty input with -Header specified' {
             $result = '' | ConvertFrom-Csv -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle one empty line with -Header specified' {
             $result = @'
 
 '@ | ConvertFrom-Csv -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle multiple empty lines with -Header specified' {
@@ -265,7 +265,7 @@ P1,P2
 
 
 '@ | ConvertFrom-Csv -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle mixed content with -Header parameter' {
@@ -276,15 +276,15 @@ B1,B2
 ,
 '@ | ConvertFrom-Csv -Header P1, P2
 
-            $result.Count | Should -Be 4
-            $result[0].P1 | Should -Be ''
-            $result[0].P2 | Should -Be ''
-            $result[1].P1 | Should -Be 'A1'
-            $result[1].P2 | Should -Be 'A2'
-            $result[2].P1 | Should -Be 'B1'
-            $result[2].P2 | Should -Be 'B2'
-            $result[3].P1 | Should -Be ''
-            $result[3].P2 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 4
+            $result[0].P1 | Should -BeExactly ''
+            $result[0].P2 | Should -BeExactly ''
+            $result[1].P1 | Should -BeExactly 'A1'
+            $result[1].P2 | Should -BeExactly 'A2'
+            $result[2].P1 | Should -BeExactly 'B1'
+            $result[2].P2 | Should -BeExactly 'B2'
+            $result[3].P1 | Should -BeExactly ''
+            $result[3].P2 | Should -BeExactly $null
         }
 
         It 'Should handle whitespace-only fields' {
@@ -295,16 +295,16 @@ P1,P2,P3
 "","",""
 '@ | ConvertFrom-Csv
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be ' '
-            $result[0].P2 | Should -Be '  '
-            $result[0].P3 | Should -Be '   '
-            $result[1].P1 | Should -Be ''
-            $result[1].P2 | Should -Be ''
-            $result[1].P3 | Should -Be ''
-            $result[2].P1 | Should -Be ''
-            $result[2].P2 | Should -Be ''
-            $result[2].P3 | Should -Be ''
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly ' '
+            $result[0].P2 | Should -BeExactly '  '
+            $result[0].P3 | Should -BeExactly '   '
+            $result[1].P1 | Should -BeExactly ''
+            $result[1].P2 | Should -BeExactly ''
+            $result[1].P3 | Should -BeExactly ''
+            $result[2].P1 | Should -BeExactly ''
+            $result[2].P2 | Should -BeExactly ''
+            $result[2].P3 | Should -BeExactly ''
         }
 
         It 'Should handle newlines within quoted fields' {
@@ -317,11 +317,11 @@ Line2"
 '@ | ConvertFrom-Csv
 
             $expectedValue = "Line1$([Environment]::NewLine)Line2"
-            $result.Count | Should -Be 2
-            $result[0].P1 | Should -Be $expectedValue
-            $result[0].P2 | Should -Be 'Value2'
-            $result[1].P1 | Should -Be 'Value3'
-            $result[1].P2 | Should -Be $expectedValue
+            $result.Count | Should -BeExactly 2
+            $result[0].P1 | Should -BeExactly $expectedValue
+            $result[0].P2 | Should -BeExactly 'Value2'
+            $result[1].P1 | Should -BeExactly 'Value3'
+            $result[1].P2 | Should -BeExactly $expectedValue
         }
 
         It 'Should handle escaped quotes within fields' {
@@ -331,11 +331,11 @@ P1,P2
 "Another ""quoted"" value",""
 '@ | ConvertFrom-Csv
 
-            $result.Count | Should -Be 2
-            $result[0].P1 | Should -Be 'Value with "quotes"'
-            $result[0].P2 | Should -Be 'Normal value'
-            $result[1].P1 | Should -Be 'Another "quoted" value'
-            $result[1].P2 | Should -Be ''
+            $result.Count | Should -BeExactly 2
+            $result[0].P1 | Should -BeExactly 'Value with "quotes"'
+            $result[0].P2 | Should -BeExactly 'Normal value'
+            $result[1].P1 | Should -BeExactly 'Another "quoted" value'
+            $result[1].P2 | Should -BeExactly ''
         }
 
         It 'Should handle tab delimiter with empty fields' {
@@ -346,13 +346,13 @@ B1
 C1
 "@ | ConvertFrom-Csv -Delimiter "`t"
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle comma delimiter with empty fields' {
@@ -363,13 +363,13 @@ B1,,
 C1,,
 '@ | ConvertFrom-Csv -Delimiter ','
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -Be ''
-            $result[0].P3 | Should -Be ''
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -Be ''
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly ''
+            $result[0].P3 | Should -BeExactly ''
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly ''
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle custom delimiter that appears in data' {
@@ -380,16 +380,16 @@ B1
 C1
 '@ | ConvertFrom-Csv -Delimiter ';'
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[1].P1 | Should -Be 'B1'
-            $result[1].P2 | Should -BeNullOrEmpty
-            $result[1].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[1].P1 | Should -BeExactly 'B1'
+            $result[1].P2 | Should -BeExactly $null
+            $result[1].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle no delimiter with empty fields' {
@@ -400,16 +400,16 @@ B1
 C1
 '@ | ConvertFrom-Csv
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[1].P1 | Should -Be 'B1'
-            $result[1].P2 | Should -BeNullOrEmpty
-            $result[1].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[1].P1 | Should -BeExactly 'B1'
+            $result[1].P2 | Should -BeExactly $null
+            $result[1].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
     }
 }

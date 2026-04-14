@@ -313,7 +313,7 @@ B1,B2
             $csvFile = Join-Path $TestDrive -ChildPath $((New-Guid).Guid)
             'P1,P2' | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle header with one empty newline' {
@@ -323,7 +323,7 @@ P1,P2
 
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle header followed by multiple empty lines' {
@@ -335,7 +335,7 @@ P1,P2
 
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
     }
 
@@ -344,7 +344,7 @@ P1,P2
             $csvFile = Join-Path $TestDrive -ChildPath $((New-Guid).Guid)
             '' | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle one empty line with -Header specified' {
@@ -353,7 +353,7 @@ P1,P2
 
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle multiple empty lines with -Header specified' {
@@ -364,7 +364,7 @@ P1,P2
 
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Header P1, P2
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
 
         It 'Should handle mixed content with -Header parameter' {
@@ -377,15 +377,15 @@ B1,B2
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Header P1, P2
 
-            $result.Count | Should -Be 4
-            $result[0].P1 | Should -Be ''
-            $result[0].P2 | Should -Be ''
-            $result[1].P1 | Should -Be 'A1'
-            $result[1].P2 | Should -Be 'A2'
-            $result[2].P1 | Should -Be 'B1'
-            $result[2].P2 | Should -Be 'B2'
-            $result[3].P1 | Should -Be ''
-            $result[3].P2 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 4
+            $result[0].P1 | Should -BeExactly ''
+            $result[0].P2 | Should -BeExactly ''
+            $result[1].P1 | Should -BeExactly 'A1'
+            $result[1].P2 | Should -BeExactly 'A2'
+            $result[2].P1 | Should -BeExactly 'B1'
+            $result[2].P2 | Should -BeExactly 'B2'
+            $result[3].P1 | Should -BeExactly ''
+            $result[3].P2 | Should -BeExactly $null
         }
     }
 
@@ -400,16 +400,16 @@ P1,P2,P3
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be ' '
-            $result[0].P2 | Should -Be '  '
-            $result[0].P3 | Should -Be '   '
-            $result[1].P1 | Should -Be ''
-            $result[1].P2 | Should -Be ''
-            $result[1].P3 | Should -Be ''
-            $result[2].P1 | Should -Be ''
-            $result[2].P2 | Should -Be ''
-            $result[2].P3 | Should -Be ''
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly ' '
+            $result[0].P2 | Should -BeExactly '  '
+            $result[0].P3 | Should -BeExactly '   '
+            $result[1].P1 | Should -BeExactly ''
+            $result[1].P2 | Should -BeExactly ''
+            $result[1].P3 | Should -BeExactly ''
+            $result[2].P1 | Should -BeExactly ''
+            $result[2].P2 | Should -BeExactly ''
+            $result[2].P3 | Should -BeExactly ''
         }
 
         It 'Should handle newlines within quoted fields' {
@@ -424,11 +424,11 @@ Line2"
             $result = Import-Csv -Path $csvFile
 
             $expectedValue = "Line1$([Environment]::NewLine)Line2"
-            $result.Count | Should -Be 2
-            $result[0].P1 | Should -Be $expectedValue
-            $result[0].P2 | Should -Be 'Value2'
-            $result[1].P1 | Should -Be 'Value3'
-            $result[1].P2 | Should -Be $expectedValue
+            $result.Count | Should -BeExactly 2
+            $result[0].P1 | Should -BeExactly $expectedValue
+            $result[0].P2 | Should -BeExactly 'Value2'
+            $result[1].P1 | Should -BeExactly 'Value3'
+            $result[1].P2 | Should -BeExactly $expectedValue
         }
 
         It 'Should handle escaped quotes within fields' {
@@ -440,11 +440,11 @@ P1,P2
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 2
-            $result[0].P1 | Should -Be 'Value with "quotes"'
-            $result[0].P2 | Should -Be 'Normal value'
-            $result[1].P1 | Should -Be 'Another "quoted" value'
-            $result[1].P2 | Should -Be ''
+            $result.Count | Should -BeExactly 2
+            $result[0].P1 | Should -BeExactly 'Value with "quotes"'
+            $result[0].P2 | Should -BeExactly 'Normal value'
+            $result[1].P1 | Should -BeExactly 'Another "quoted" value'
+            $result[1].P2 | Should -BeExactly ''
         }
     }
 
@@ -459,11 +459,11 @@ P1,P2
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 2
-            $result[0].PSObject.TypeNames[0] | Should -Be 'Custom.Type'
-            $result[0].PSObject.TypeNames[1] | Should -Be 'CSV:Custom.Type'
-            $result[1].PSObject.TypeNames[0] | Should -Be 'Custom.Type'
-            $result[1].PSObject.TypeNames[1] | Should -Be 'CSV:Custom.Type'
+            $result.Count | Should -BeExactly 2
+            $result[0].PSObject.TypeNames[0] | Should -BeExactly 'Custom.Type'
+            $result[0].PSObject.TypeNames[1] | Should -BeExactly 'CSV:Custom.Type'
+            $result[1].PSObject.TypeNames[0] | Should -BeExactly 'Custom.Type'
+            $result[1].PSObject.TypeNames[1] | Should -BeExactly 'CSV:Custom.Type'
         }
 
         It 'Should handle type information with empty rows' {
@@ -477,7 +477,7 @@ P1,P2
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result | Should -BeNullOrEmpty
+            $result | Should -BeExactly $null
         }
     }
 
@@ -492,13 +492,13 @@ C1
 "@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Delimiter "`t"
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle delimiter with empty fields' {
@@ -511,13 +511,13 @@ C1,,
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Delimiter ','
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -Be ''
-            $result[0].P3 | Should -Be ''
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -Be ''
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly ''
+            $result[0].P3 | Should -BeExactly ''
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly ''
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle custom delimiter that appears in data' {
@@ -530,16 +530,16 @@ C1
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile -Delimiter ';'
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[1].P1 | Should -Be 'B1'
-            $result[1].P2 | Should -BeNullOrEmpty
-            $result[1].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[1].P1 | Should -BeExactly 'B1'
+            $result[1].P2 | Should -BeExactly $null
+            $result[1].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
 
         It 'Should handle no delimiter with empty fields' {
@@ -552,16 +552,16 @@ C1
 '@ | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 3
-            $result[0].P1 | Should -Be 'A1'
-            $result[0].P2 | Should -BeNullOrEmpty
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[1].P1 | Should -Be 'B1'
-            $result[1].P2 | Should -BeNullOrEmpty
-            $result[1].P3 | Should -BeNullOrEmpty
-            $result[2].P1 | Should -Be 'C1'
-            $result[2].P2 | Should -BeNullOrEmpty
-            $result[2].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 3
+            $result[0].P1 | Should -BeExactly 'A1'
+            $result[0].P2 | Should -BeExactly $null
+            $result[0].P3 | Should -BeExactly $null
+            $result[1].P1 | Should -BeExactly 'B1'
+            $result[1].P2 | Should -BeExactly $null
+            $result[1].P3 | Should -BeExactly $null
+            $result[2].P1 | Should -BeExactly 'C1'
+            $result[2].P2 | Should -BeExactly $null
+            $result[2].P3 | Should -BeExactly $null
         }
     }
 
@@ -576,13 +576,13 @@ C1
             $csvContent | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 100
-            $result[0].P1 | Should -Be ''
-            $result[0].P2 | Should -Be ''
-            $result[0].P3 | Should -BeNullOrEmpty
-            $result[99].P1 | Should -Be ''
-            $result[99].P2 | Should -Be ''
-            $result[99].P3 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 100
+            $result[0].P1 | Should -BeExactly ''
+            $result[0].P2 | Should -BeExactly ''
+            $result[0].P3 | Should -BeExactly ''
+            $result[99].P1 | Should -BeExactly ''
+            $result[99].P2 | Should -BeExactly ''
+            $result[99].P3 | Should -BeExactly ''
         }
 
         It 'Should handle many columns with empty values' {
@@ -595,10 +595,10 @@ C1
             $csvContent | Set-Content -Path $csvFile -NoNewline
             $result = Import-Csv -Path $csvFile
 
-            $result.Count | Should -Be 1
-            $result[0].P1 | Should -Be ''
-            $result[0].P25 | Should -Be ''
-            $result[0].P50 | Should -BeNullOrEmpty
+            $result.Count | Should -BeExactly 1
+            $result[0].P1 | Should -BeExactly ''
+            $result[0].P25 | Should -BeExactly ''
+            $result[0].P50 | Should -BeExactly ''
         }
     }
 }
