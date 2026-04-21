@@ -29,11 +29,11 @@ This is an indicator that this work needs to be done. This toggle switch is no l
 
 ### Step 1: Extract Shared Templates
 
-For each pipeline file that uses the toggle switch pattern (e.g., `PowerShell-Packages.yml`):
+For each pipeline file that uses the toggle switch pattern (e.g., `PowerShell-Packages-Official.yml`):
 
-1. Create a `.pipelines/templates` directory if it doesn't exist
-2. Extract the **variables section** into `.pipelines/templates/PowerShell-Packages-Variables.yml`
-3. Extract the **stages section** into `.pipelines/templates/PowerShell-Packages-Stages.yml`
+1. Create the `.pipelines/templates/variables` and `.pipelines/templates/stages` directories if they don't exist
+2. Extract the **variables section** into `.pipelines/templates/variables/PowerShell-Packages-Variables.yml`
+3. Extract the **stages section** into `.pipelines/templates/stages/PowerShell-Packages-Stages.yml`
 
 **IMPORTANT**: Only extract the `variables:` and `stages:` sections. All other sections (parameters, resources, extends, etc.) remain in the pipeline files.
 
@@ -41,7 +41,7 @@ For each pipeline file that uses the toggle switch pattern (e.g., `PowerShell-Pa
 
 The original toggle-based file becomes the Official pipeline:
 
-1. **Keep the file in its original location** (e.g., `.pipelines/PowerShell-Packages.yml` stays where it is)
+1. **Keep the file in its original location** (e.g., `.pipelines/PowerShell-Packages-Official.yml` stays where it is)
 2. Remove the toggle switch parameter (`templateFile` parameter)
 3. Hard-code the Official template reference:
    ```yaml
@@ -51,12 +51,12 @@ The original toggle-based file becomes the Official pipeline:
 4. Replace the `variables:` section with a template reference:
    ```yaml
    variables:
-     - template: templates/PowerShell-Packages-Variables.yml
+     - template: templates/variables/PowerShell-Packages-Variables.yml
    ```
 5. Replace the `stages:` section with a template reference:
    ```yaml
    stages:
-     - template: templates/PowerShell-Packages-Stages.yml
+     - template: templates/stages/PowerShell-Packages-Stages.yml
    ```
 
 ### Step 3: Create NonOfficial Pipeline
@@ -72,10 +72,10 @@ The original toggle-based file becomes the Official pipeline:
 5. Reference the same shared templates:
    ```yaml
    variables:
-     - template: ../templates/PowerShell-Packages-Variables.yml
+     - template: ../templates/variables/PowerShell-Packages-Variables.yml
    
    stages:
-     - template: ../templates/PowerShell-Packages-Stages.yml
+     - template: ../templates/stages/PowerShell-Packages-Stages.yml
    ```
 
 **Note**: The NonOfficial pipeline uses `../templates/` because it's one directory deeper than the Official pipeline.
@@ -124,11 +124,11 @@ Then you must configure the `ob_release_environment` parameter when referencing 
 
 #### Official Pipeline Configuration
 
-In the Official pipeline (e.g., `.pipelines/PowerShell-Packages.yml`):
+In the Official pipeline (e.g., `.pipelines/PowerShell-Packages-Official.yml`):
 
 ```yaml
 stages:
-  - template: templates/PowerShell-Packages-Stages.yml
+  - template: templates/stages/PowerShell-Packages-Stages.yml
     parameters:
       ob_release_environment: Production
 ```
@@ -139,14 +139,14 @@ In the NonOfficial pipeline (e.g., `.pipelines/NonOfficial/PowerShell-Packages-N
 
 ```yaml
 stages:
-  - template: ../templates/PowerShell-Packages-Stages.yml
+  - template: ../templates/stages/PowerShell-Packages-Stages.yml
     parameters:
       ob_release_environment: Test
 ```
 
 #### Update Stages Template to Accept Parameter
 
-The extracted stages template (e.g., `.pipelines/templates/PowerShell-Packages-Stages.yml`) must declare the parameter at the top:
+The extracted stages template (e.g., `.pipelines/templates/stages/PowerShell-Packages-Stages.yml`) must declare the parameter at the top:
 
 ```yaml
 parameters:
