@@ -1,3 +1,19 @@
+parameters:
+- name: releaseEnvironment
+  type: string
+  default: Production
+  values:
+    - Production
+    - PPE
+    - Test
+- name: approvalServiceEnvironment
+  type: string
+  default: Production
+  values:
+    - Production
+    - PPE
+    - Test
+
 stages:
 - stage: 'Prod_Release'
   displayName: 'Deploy packages to PMC with EV2'
@@ -5,7 +21,7 @@ stages:
   - PrepForEV2
   variables:
     - name: ob_release_environment
-      value: "Production"
+      value: ${{ parameters.releaseEnvironment }}
     - name: repoRoot
       value: $(Build.SourcesDirectory)
   jobs:
@@ -24,6 +40,6 @@ stages:
       inputs:
         UseServerMonitorTask: true
         EndpointProviderType: ApprovalService
-        ApprovalServiceEnvironment: Production
+        ApprovalServiceEnvironment: ${{ parameters.approvalServiceEnvironment }}
         ServiceRootPath: '$(Pipeline.Workspace)/drop_PrepForEV2_CopyEV2FilesToArtifact/EV2Specs/ServiceGroupRoot'
         RolloutSpecPath: '$(Pipeline.Workspace)/drop_PrepForEV2_CopyEV2FilesToArtifact/EV2Specs/ServiceGroupRoot/RolloutSpec.json'

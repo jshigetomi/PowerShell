@@ -74,3 +74,6 @@ extends:
           skipPublish: ${{ parameters.skipPublish }}
 
       - template: /.pipelines/templates/release-publish-pmc.yml@self
+        parameters:
+          releaseEnvironment: Test
+          approvalServiceEnvironment: Test
