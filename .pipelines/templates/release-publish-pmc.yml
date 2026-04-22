@@ -52,5 +52,5 @@ stages:
           UseServerMonitorTask: true
           EndpointProviderType: ApprovalService
           ApprovalServiceEnvironment: ${{ parameters.approvalServiceEnvironment }}
-          ServiceRootPath: '$(Pipeline.Workspace)/drop_PrepForEV2_CopyEV2FilesToArtifact/EV2Specs/ServiceGroupRoot'
-          RolloutSpecPath: '$(Pipeline.Workspace)/drop_PrepForEV2_CopyEV2FilesToArtifact/EV2Specs/ServiceGroupRoot/RolloutSpec.json'
+          ServiceRootPath: '$(Pipeline.Workspace)/EV2Specs/ServiceGroupRoot'
+          RolloutSpecPath: '$(Pipeline.Workspace)/EV2Specs/ServiceGroupRoot/RolloutSpec.json'
