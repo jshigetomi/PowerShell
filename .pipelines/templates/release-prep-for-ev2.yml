@@ -38,6 +38,8 @@ stages:
     - group: 'packages.microsoft.com'
     - name: ob_sdl_credscan_suppressionsFile
       value: $(Build.SourcesDirectory)/PowerShell/.config/suppress.json
+    - name: ob_sdl_tsa_configFile
+      value: $(Build.SourcesDirectory)/PowerShell/.config/tsaoptions.json
     steps:
     - checkout: self ## the global setting on lfs didn't work
       lfs: false
