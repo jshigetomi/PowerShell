@@ -11,6 +11,20 @@ stages:
     displayName: 'Copy EV2 Files to Artifact'
     pool:
       type: linux
+    templateContext:
+      inputs:
+        - input: pipelineArtifact
+          pipeline: PSPackagesOfficial
+          artifactName: drop_linux_package_deb
+        - input: pipelineArtifact
+          pipeline: PSPackagesOfficial
+          artifactName: drop_linux_package_rpm
+        - input: pipelineArtifact
+          pipeline: PSPackagesOfficial
+          artifactName: drop_linux_package_mariner_x64
+        - input: pipelineArtifact
+          pipeline: PSPackagesOfficial
+          artifactName: drop_linux_package_mariner_arm64
     variables:
     - name: ob_outputDirectory
       value: '$(Build.ArtifactStagingDirectory)/ONEBRANCH_ARTIFACT'
@@ -96,30 +110,6 @@ stages:
         $pythonDlFolderPath = Join-Path '$(ev2ServiceGroupRootFolder)/Shell/Run' -ChildPath "python_dl"
         pip download -d $pythonDlFolderPath pmc-cli --platform=manylinux_2_17_x86_64 --only-binary=:all: --verbose
       displayName: 'Download pmc-cli package'
-      env:
-        ob_restore_phase: true
-
-    - download: PSPackagesOfficial
-      artifact: 'drop_linux_package_deb'
-      displayName: 'Download artifact containing .deb_amd64.deb file from PSPackagesOfficial triggering pipeline'
-      env:
-        ob_restore_phase: true
-
-    - download: PSPackagesOfficial
-      artifact: 'drop_linux_package_rpm'
-      displayName: 'Download artifact containing .rh.x64_86.rpm file from PSPackagesOfficial triggering pipeline'
-      env:
-        ob_restore_phase: true
-
-    - download: PSPackagesOfficial
-      artifact: 'drop_linux_package_mariner_x64'
-      displayName: 'Download artifact containing .cm.x86_64.rpm file from PSPackagesOfficial triggering pipeline'
-      env:
-        ob_restore_phase: true
-
-    - download: PSPackagesOfficial
-      artifact: 'drop_linux_package_mariner_arm64'
-      displayName: 'Download artifact containing .cm.aarch64.rpm file from PSPackagesOfficial triggering pipeline'
       env:
         ob_restore_phase: true
 
