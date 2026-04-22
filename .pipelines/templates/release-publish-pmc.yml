@@ -13,9 +13,14 @@ parameters:
     - Production
     - PPE
     - Test
+# OneBranch requires the stage name to be prefixed with the release environment.
+# Official uses 'Prod' for Production; NonProd validators require '<env>' (e.g. 'Test', 'PPE').
+- name: stagePrefix
+  type: string
+  default: Prod
 
 stages:
-- stage: 'Prod_Release'
+- stage: ${{ parameters.stagePrefix }}_Release
   displayName: 'Deploy packages to PMC with EV2'
   dependsOn:
   - PrepForEV2
@@ -25,7 +30,7 @@ stages:
     - name: repoRoot
       value: $(Build.SourcesDirectory)
   jobs:
-  - job: Prod_ReleaseJob
+  - job: ${{ parameters.stagePrefix }}_ReleaseJob
     displayName: Publish to PMC
     pool:
       type: release

@@ -77,3 +77,4 @@ extends:
         parameters:
           releaseEnvironment: Test
           approvalServiceEnvironment: Test
+          stagePrefix: Test
