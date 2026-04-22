@@ -83,10 +83,12 @@ jobs:
         $currentChannel = if ($IsLTS) { 'LTS' }
           elseif ($IsStable) { 'Stable' }
           elseif ($IsPreview) { 'Preview' }
-          else { 
-            Write-Error "No valid channel detected"
-            exit 1
-          }
+          else { $null }
+
+        if (-not $currentChannel) {
+          Write-Host "##[warning]No release channel selected (LTS/Stable/Preview all false). Skipping Store publish."
+          return
+        }
 
         # Assign AppID for Store-Publish Task
         $appID = $null
