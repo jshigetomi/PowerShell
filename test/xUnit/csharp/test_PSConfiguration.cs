@@ -382,6 +382,15 @@ namespace PSTests.Sequential
             CreateBrokenConfigFile(currentUserConfigFile);
         }
 
+        public void SetupBrokenCurrentUserConfigOnly()
+        {
+            CleanupConfigFiles();
+
+            // Only the per-user config file is broken; the system-wide file is absent.
+            // Used to verify the #27370 fail-open path for ConfigScope.CurrentUser.
+            CreateBrokenConfigFile(currentUserConfigFile);
+        }
+
         private static void CreateBrokenConfigFile(string fileName)
         {
             File.WriteAllText(fileName, "[abbra");
@@ -985,7 +994,29 @@ namespace PSTests.Sequential
             fixture.ForceReadingFromFile();
 
             Assert.Throws<System.Management.Automation.PSInvalidOperationException>(() => PowerShellConfig.Instance.GetPowerShellPolicies(ConfigScope.AllUsers));
-            Assert.Throws<System.Management.Automation.PSInvalidOperationException>(() => PowerShellConfig.Instance.GetPowerShellPolicies(ConfigScope.CurrentUser));
+
+            // Malformed per-user file should fall back to defaults
+            PowerShellPolicies currentUserPolicies = PowerShellConfig.Instance.GetPowerShellPolicies(ConfigScope.CurrentUser);
+            Assert.Null(currentUserPolicies);
+        }
+
+        [Fact, Priority(12)]
+        public void PowerShellConfig_BrokenCurrentUserConfig_FallsBackToDefaults()
+        {
+            fixture.SetupBrokenCurrentUserConfigOnly();
+            fixture.ForceReadingFromFile();
+
+            // ExecutionPolicy returns null (caller falls back to GP / registry / Restricted).
+            string execPolicy = PowerShellConfig.Instance.GetExecutionPolicy(ConfigScope.CurrentUser, "Microsoft.PowerShell");
+            Assert.Null(execPolicy);
+
+            // Module path returns null (caller uses built-in defaults).
+            string modulePath = PowerShellConfig.Instance.GetModulePath(ConfigScope.CurrentUser);
+            Assert.Null(modulePath);
+
+            // Experimental features list is empty.
+            string[] features = PowerShellConfig.Instance.GetExperimentalFeatures();
+            Assert.Empty(features);
         }
     }
 }

@@ -411,6 +411,30 @@ namespace System.Management.Automation.Configuration
 
                         configData = serializer.Deserialize<JObject>(jsonReader) ?? emptyConfig;
                     }
+                    catch (Exception exc) when (
+                        scope == ConfigScope.CurrentUser &&
+                        (exc is IOException || exc is UnauthorizedAccessException || exc is JsonException))
+                    {
+                        // The per-user configuration file is unreadable (e.g. OneDrive cloud file provider
+                        // not running, permission denied, or corrupt/malformed JSON). Rather than failing
+                        // pwsh startup, fall back to defaults and emit a warning so the user knows the file
+                        // was skipped. See https://github.com/PowerShell/PowerShell/issues/27370.
+                        //
+                        // We intentionally do NOT apply this fallback to ConfigScope.AllUsers: that file is
+                        // admin-owned and on non-Windows platforms is the only source for security-relevant
+                        // policies (ScriptBlockLogging, Transcription, ConsoleSessionConfiguration, etc.).
+                        // If we cannot prove the admin's intent we must fail closed.
+                        try
+                        {
+                            Console.Error.WriteLine(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationFile, fileName, exc.Message));
+                        }
+                        catch
+                        {
+                            // Best-effort warning; never let logging failures block startup.
+                        }
+
+                        configData = emptyConfig;
+                    }
                     catch (Exception exc)
                     {
                         throw PSTraceSource.NewInvalidOperationException(exc, PSConfigurationStrings.CanNotConfigurationFile, args: fileName);
