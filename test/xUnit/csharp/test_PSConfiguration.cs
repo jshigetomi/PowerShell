@@ -987,7 +987,8 @@ namespace PSTests.Sequential
             fixture.CompareConsoleSessionConfiguration(consoleSessionConfiguration, null);
         }
 
-        [Fact, Priority(11)]
+        [Fact]
+        [Priority(11)]
         public void PowerShellConfig_GetPowerShellPolicies_BrokenSystemConfig()
         {
             fixture.SetupConfigFile5();
@@ -1000,7 +1001,8 @@ namespace PSTests.Sequential
             Assert.Null(currentUserPolicies);
         }
 
-        [Fact, Priority(12)]
+        [Fact]
+        [Priority(12)]
         public void PowerShellConfig_BrokenCurrentUserConfig_FallsBackToDefaults()
         {
             fixture.SetupBrokenCurrentUserConfigOnly();
