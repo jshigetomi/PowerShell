@@ -391,6 +391,19 @@ namespace PSTests.Sequential
             CreateBrokenConfigFile(currentUserConfigFile);
         }
 
+        public void SetupTypeMismatchedCurrentUserConfig()
+        {
+            CleanupConfigFiles();
+
+            // Per-user config is syntactically valid JSON, but PowerShellPolicies has the
+            // wrong nested shape: ScriptExecution should be an object but is a string.
+            // This triggers JsonSerializationException inside jToken.ToObject<T>() and
+            // exercises the per-key fail-open path for #27370.
+            File.WriteAllText(
+                currentUserConfigFile,
+                "{ \"PowerShellPolicies\": { \"ScriptExecution\": \"not-an-object\" } }");
+        }
+
         private static void CreateBrokenConfigFile(string fileName)
         {
             File.WriteAllText(fileName, "[abbra");
@@ -1019,6 +1032,21 @@ namespace PSTests.Sequential
             // Experimental features list is empty.
             string[] features = PowerShellConfig.Instance.GetExperimentalFeatures();
             Assert.Empty(features);
+        }
+
+        [Fact]
+        [Priority(13)]
+        public void PowerShellConfig_TypeMismatchInCurrentUserConfig_FallsBackToDefaults()
+        {
+            // Verifies the per-key fail-open path: the file parses as JSON, but a value
+            // can't be materialized as its target type. Without this fallback the
+            // JsonSerializationException would propagate out of GetPolicySetting and
+            // crash startup just like #27370.
+            fixture.SetupTypeMismatchedCurrentUserConfig();
+            fixture.ForceReadingFromFile();
+
+            PowerShellPolicies policies = PowerShellConfig.Instance.GetPowerShellPolicies(ConfigScope.CurrentUser);
+            Assert.Null(policies);
         }
     }
 }

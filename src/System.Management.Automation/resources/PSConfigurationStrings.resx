@@ -123,4 +123,7 @@
   <data name="CanNotReadConfigurationFile" xml:space="preserve">
     <value>WARNING: Cannot read the PowerShell configuration file '{0}': {1}. Falling back to default settings.</value>
   </data>
+  <data name="CanNotReadConfigurationValue" xml:space="preserve">
+    <value>WARNING: Cannot read setting '{0}' from PowerShell configuration file '{1}': {2}. Falling back to default for this setting.</value>
+  </data>
 </root>

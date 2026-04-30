@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Management.Automation.Internal;
+using System.Security;
 using System.Text;
 using System.Threading;
 
@@ -413,12 +414,12 @@ namespace System.Management.Automation.Configuration
                     }
                     catch (Exception exc) when (
                         scope == ConfigScope.CurrentUser &&
-                        (exc is IOException || exc is UnauthorizedAccessException || exc is JsonException))
+                        (exc is IOException || exc is UnauthorizedAccessException || exc is SecurityException || exc is JsonException))
                     {
                         // The per-user configuration file is unreadable (e.g. OneDrive cloud file provider
-                        // not running, permission denied, or corrupt/malformed JSON). Rather than failing
-                        // pwsh startup, fall back to defaults and emit a warning so the user knows the file
-                        // was skipped. See https://github.com/PowerShell/PowerShell/issues/27370.
+                        // not running, permission denied, ACL denied, or corrupt/malformed JSON). Rather
+                        // than failing pwsh startup, fall back to defaults and emit a warning so the user
+                        // knows the file was skipped. See https://github.com/PowerShell/PowerShell/issues/27370.
                         //
                         // We intentionally do NOT apply this fallback to ConfigScope.AllUsers: that file is
                         // admin-owned and on non-Windows platforms is the only source for security-relevant
@@ -459,7 +460,29 @@ namespace System.Management.Automation.Configuration
 
             if (configData != emptyConfig && configData.TryGetValue(key, StringComparison.OrdinalIgnoreCase, out JToken jToken))
             {
-                return jToken.ToObject<T>(serializer) ?? defaultValue;
+                try
+                {
+                    return jToken.ToObject<T>(serializer) ?? defaultValue;
+                }
+                catch (JsonException exc) when (scope == ConfigScope.CurrentUser)
+                {
+                    // The per-user JSON parsed successfully, but the value at <key> can't be
+                    // materialized as T (wrong type, malformed sub-document, etc.). Fall back
+                    // to the caller's default for this setting and emit a warning, mirroring
+                    // the file-level fallback above. AllUsers stays fail-closed for
+                    // security-relevant policies.
+                    // See https://github.com/PowerShell/PowerShell/issues/27370.
+                    try
+                    {
+                        Console.Error.WriteLine(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationValue, key, fileName, exc.Message));
+                    }
+                    catch
+                    {
+                        // Best-effort warning; never let logging failures block startup.
+                    }
+
+                    return defaultValue;
+                }
             }
 
             return defaultValue;
