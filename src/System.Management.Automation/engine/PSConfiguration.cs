@@ -425,14 +425,7 @@ namespace System.Management.Automation.Configuration
                         // admin-owned and on non-Windows platforms is the only source for security-relevant
                         // policies (ScriptBlockLogging, Transcription, ConsoleSessionConfiguration, etc.).
                         // If we cannot prove the admin's intent we must fail closed.
-                        try
-                        {
-                            Console.Error.WriteLine(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationFile, fileName, exc.Message));
-                        }
-                        catch
-                        {
-                            // Best-effort warning; never let logging failures block startup.
-                        }
+                        TryWriteConfigWarning(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationFile, fileName, exc.Message));
 
                         configData = emptyConfig;
                     }
@@ -472,20 +465,33 @@ namespace System.Management.Automation.Configuration
                     // the file-level fallback above. AllUsers stays fail-closed for
                     // security-relevant policies.
                     // See https://github.com/PowerShell/PowerShell/issues/27370.
-                    try
-                    {
-                        Console.Error.WriteLine(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationValue, key, fileName, exc.Message));
-                    }
-                    catch
-                    {
-                        // Best-effort warning; never let logging failures block startup.
-                    }
-
+                    TryWriteConfigWarning(StringUtil.Format(PSConfigurationStrings.CanNotReadConfigurationValue, key, fileName, exc.Message));
                     return defaultValue;
                 }
             }
 
             return defaultValue;
+        }
+
+        /// <summary>
+        /// Best-effort emission of a warning when the per-user configuration file (or one of its
+        /// values) can't be read. <see cref="ReadValueFromFile"/> is invoked very early in pwsh
+        /// startup -- before any host, runspace, or PowerShell warning stream exists -- so we
+        /// write directly to <see cref="Console.Error"/>. This matches existing startup-time
+        /// stderr writes in ConsoleHost (e.g. CannotLoadPSReadline). Centralizing this here
+        /// keeps formatting consistent and gives future hosts a single seam to swap the channel.
+        /// Failures inside the writer itself are swallowed so logging issues never block startup.
+        /// </summary>
+        private static void TryWriteConfigWarning(string message)
+        {
+            try
+            {
+                Console.Error.WriteLine("WARNING: " + message);
+            }
+            catch
+            {
+                // Best-effort warning; never let logging failures block startup.
+            }
         }
 
         private static FileStream OpenFileStreamWithRetry(string fullPath, FileMode mode, FileAccess access, FileShare share)
